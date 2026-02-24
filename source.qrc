@@ -2,5 +2,6 @@
     <qresource prefix="/source">
         <file>source/img/icon/icon.ico</file>
         <file>source/setting_app.json</file>
+        <file>source/img/button/info.png</file>
     </qresource>
 </RCC>

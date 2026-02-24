@@ -22,9 +22,9 @@ set(TS_FILES Game_personality_analysis_ru_RU.ts)
 set(PROJECT_SOURCES
         app_icon.rc
         main.cpp
-        mainwindow.cpp
-        mainwindow.h
-        mainwindow.ui
+        GUI/mainwindow.cpp
+        GUI/mainwindow.h
+        GUI/mainwindow.ui
         ${TS_FILES}
 )
 
@@ -55,6 +55,7 @@ else()
             game/2/game_2.h game/2/game_2.cpp game/2/game_2.ui
             game/3/game_3.h game/3/game_3.cpp game/3/game_3.ui
             version.h
+            GUI/info_dialog/info_dialog.h GUI/info_dialog/info_dialog.cpp GUI/info_dialog/info_dialog.ui
         )
     endif()
 
