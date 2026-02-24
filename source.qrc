@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/source">
+        <file>source/img/icon/icon.ico</file>
+        <file>source/setting_app.json</file>
+    </qresource>
+</RCC>

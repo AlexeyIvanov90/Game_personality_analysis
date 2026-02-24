@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Game2</class>
+ <widget class="QMainWindow" name="Game2">
+  <property name="windowModality">
+   <enum>Qt::ApplicationModal</enum>
+  </property>
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1024</width>
+    <height>768</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Определение уровня работоспобности</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QPushButton" name="pushButtonClose">
+    <property name="geometry">
+     <rect>
+      <x>780</x>
+      <y>680</y>
+      <width>221</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Закрыть</string>
+    </property>
+   </widget>
+  </widget>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
