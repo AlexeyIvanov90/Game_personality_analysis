@@ -15,7 +15,7 @@ if(WIN32)
 endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Quick QuickWidgets)
 
 set(TS_FILES Game_personality_analysis_ru_RU.ts)
 
@@ -72,7 +72,10 @@ add_custom_command(
 )
 
 target_include_directories(Game_personality_analysis PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(Game_personality_analysis PRIVATE Qt${QT_VERSION_MAJOR}::Widgets)
+target_link_libraries(Game_personality_analysis PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::Quick
+    Qt${QT_VERSION_MAJOR}::QuickWidgets)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

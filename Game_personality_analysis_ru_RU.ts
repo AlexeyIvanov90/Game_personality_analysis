@@ -4,22 +4,18 @@
 <context>
     <name>Game1</name>
     <message>
-        <location filename="game/1/game_1.ui" line="20"/>
         <source>Определение уровня ПВК </source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/1/game_1.ui" line="33"/>
         <source>Закрыть</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/1/game_1.ui" line="69"/>
         <source>Старт</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/1/game_1.ui" line="82"/>
         <source>Стоп</source>
         <translation type="unfinished"></translation>
     </message>
@@ -27,22 +23,18 @@
 <context>
     <name>Game2</name>
     <message>
-        <location filename="game/2/game_2.ui" line="17"/>
         <source>Определение уровня работоспобности</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/2/game_2.ui" line="30"/>
         <source>Закрыть</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/2/game_2.ui" line="43"/>
         <source>Стоп</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/2/game_2.ui" line="56"/>
         <source>Старт</source>
         <translation type="unfinished"></translation>
     </message>
@@ -50,22 +42,18 @@
 <context>
     <name>Game3</name>
     <message>
-        <location filename="game/3/game_3.ui" line="17"/>
         <source>Определение человеческого фактора</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/3/game_3.ui" line="30"/>
         <source>Закрыть</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/3/game_3.ui" line="43"/>
         <source>Стоп</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="game/3/game_3.ui" line="56"/>
         <source>Старт</source>
         <translation type="unfinished"></translation>
     </message>
@@ -73,12 +61,10 @@
 <context>
     <name>InfoDialog</name>
     <message>
-        <location filename="GUI/info_dialog/info_dialog.ui" line="17"/>
         <source>Информационное окно</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="GUI/info_dialog/info_dialog.ui" line="48"/>
         <source>Закрыть</source>
         <translation type="unfinished"></translation>
     </message>
@@ -86,32 +72,22 @@
 <context>
     <name>MainWindow</name>
     <message>
-        <location filename="GUI/mainwindow.ui" line="14"/>
-        <location filename="mainwindow.ui" line="14"/>
         <source>Методы психофизиологии для определения типа личности</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="GUI/mainwindow.ui" line="27"/>
-        <location filename="mainwindow.ui" line="27"/>
         <source>Игра 1</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="GUI/mainwindow.ui" line="40"/>
-        <location filename="mainwindow.ui" line="40"/>
         <source>Игра 2</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="GUI/mainwindow.ui" line="53"/>
-        <location filename="mainwindow.ui" line="53"/>
         <source>Игра 3</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="GUI/mainwindow.ui" line="66"/>
-        <location filename="mainwindow.ui" line="66"/>
         <source>Закрыть</source>
         <translation type="unfinished"></translation>
     </message>

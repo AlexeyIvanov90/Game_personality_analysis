@@ -82,8 +82,67 @@
      <string>Стоп</string>
     </property>
    </widget>
+   <widget class="QQuickWidget" name="quickWidgetGame1">
+    <property name="geometry">
+     <rect>
+      <x>20</x>
+      <y>20</y>
+      <width>981</width>
+      <height>641</height>
+     </rect>
+    </property>
+    <property name="resizeMode">
+     <enum>QQuickWidget::SizeRootObjectToView</enum>
+    </property>
+   </widget>
+   <widget class="QSpinBox" name="spinBoxLVL">
+    <property name="geometry">
+     <rect>
+      <x>550</x>
+      <y>690</y>
+      <width>61</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="minimum">
+     <number>1</number>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelHit">
+    <property name="geometry">
+     <rect>
+      <x>650</x>
+      <y>680</y>
+      <width>111</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QLabel" name="labelMiss">
+    <property name="geometry">
+     <rect>
+      <x>650</x>
+      <y>720</y>
+      <width>111</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
   </widget>
  </widget>
+ <customwidgets>
+  <customwidget>
+   <class>QQuickWidget</class>
+   <extends>QWidget</extends>
+   <header location="global">QtQuickWidgets/QQuickWidget</header>
+  </customwidget>
+ </customwidgets>
  <resources>
   <include location="../../source.qrc"/>
  </resources>

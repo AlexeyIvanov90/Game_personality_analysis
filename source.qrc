@@ -4,4 +4,7 @@
         <file>source/setting_app.json</file>
         <file>source/img/button/info.png</file>
     </qresource>
+    <qresource prefix="/">
+        <file>game/1/game_1.qml</file>
+    </qresource>
 </RCC>
