@@ -3,8 +3,13 @@
         <file>source/img/icon/icon.ico</file>
         <file>source/setting_app.json</file>
         <file>source/img/button/info.png</file>
+        <file>source/img/game_2/cactus_transparent.png</file>
+        <file>source/img/game_2/cloud_transparent.png</file>
+        <file>source/img/game_2/dino_1_transparent.png</file>
+        <file>source/img/game_2/dino_2_transparent.png</file>
     </qresource>
     <qresource prefix="/">
         <file>game/1/game_1.qml</file>
+        <file>game/2/game_2.qml</file>
     </qresource>
 </RCC>
