@@ -11,5 +11,6 @@
     <qresource prefix="/">
         <file>game/1/game_1.qml</file>
         <file>game/2/game_2.qml</file>
+        <file>game/3/game_3.qml</file>
     </qresource>
 </RCC>

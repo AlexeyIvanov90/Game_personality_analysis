@@ -87,7 +87,7 @@ void Game2::on_pushButtonStop_clicked()
     if (root) {
         bool success = QMetaObject::invokeMethod(root, "stopGame");
         if (!success) {
-            qDebug() << "Не удалось вызвать функцию startGame";
+            qDebug() << "Не удалось вызвать функцию stopGame";
         }
     }
 }
