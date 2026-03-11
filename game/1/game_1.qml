@@ -3,17 +3,19 @@ import QtQuick 2.12
 
 Item {
     id: root
-    signal hitShape()
+    signal hitShape()   
     signal missShape()
+    signal levelCompleted()
 
-    property int score: 0
     property int difficulty: 4
 
     property bool waitingForNumbers: true
+    property bool gameRun: false
+
     property int nextExpectedNumber: 1
 
-    width: 640
-    height: 480
+    width: 981
+    height: 641
     visible: true
 
     ListModel { id: shapeModel }
@@ -70,8 +72,16 @@ Item {
         return createRandomShape()
     }
 
+    function stopGame() {
+        gameRun=false;
+        numberTimer.stop()
+        shapeModel.clear()
+    }
+
     // Заполнение модели непересекающимися фигурами со случайными номерами
-    function populateModel(lvl) {
+    function startGame(lvl) {
+        gameRun=true;
+
         difficulty=lvl
         shapeModel.clear()
 
@@ -107,21 +117,19 @@ Item {
         if (number === nextExpectedNumber) {
             // Правильный порядок
             shapeModel.remove(index)
-            score += 1
             hitShape()
             nextExpectedNumber++
             console.log("Правильно, осталось фигур:", shapeModel.count)
 
             if (shapeModel.count === 0) {
+                levelCompleted()
                 console.log("Раунд завершён!")
             }
         } else {
             missShape()
-            shapeModel.clear()
             console.log("Ошибка порядка")
         }
     }
-
 
     Repeater {
         model: shapeModel
@@ -159,11 +167,10 @@ Item {
         anchors.fill: parent
         z: 0
         onClicked: {
-            missShape()
-            shapeModel.clear()
-            console.log("Промах по фону")
+            if(gameRun==true){
+                missShape()
+                console.log("Промах по фону")
+            }
         }
     }
-
-    Component.onCompleted: populateModel()
 }

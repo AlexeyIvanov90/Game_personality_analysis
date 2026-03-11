@@ -12,7 +12,7 @@ Item {
     property int ballRadius: 20
     property double ballSpeed: 5          // импульс от клавиш
     property double friction: 0.98         // трение
-    property bool gameActive: true
+    property bool gameActive: false
 
     // Скорость шарика по осям
     property double vx: 0
@@ -89,17 +89,6 @@ Item {
             color: "green"
             visible: gameActive
         }
-    }
-
-    // ----- Интерфейс: счёт и сообщение о проигрыше -----
-    Text {
-        id: gameOverText
-        text: "Ты проиграл!"
-        visible: !gameActive
-        anchors.centerIn: parent
-        font.pixelSize: 28
-        color: "red"
-        z: 10
     }
 
     // ----- Управление только с клавиатуры -----

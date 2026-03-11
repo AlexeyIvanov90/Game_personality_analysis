@@ -100,20 +100,23 @@
      <rect>
       <x>550</x>
       <y>690</y>
-      <width>61</width>
+      <width>41</width>
       <height>41</height>
      </rect>
     </property>
     <property name="minimum">
      <number>1</number>
     </property>
+    <property name="value">
+     <number>5</number>
+    </property>
    </widget>
-   <widget class="QLabel" name="labelHit">
+   <widget class="QLabel" name="labelAccuracy">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>680</y>
-      <width>111</width>
+      <x>0</x>
+      <y>740</y>
+      <width>401</width>
       <height>31</height>
      </rect>
     </property>
@@ -121,12 +124,12 @@
      <string/>
     </property>
    </widget>
-   <widget class="QLabel" name="labelMiss">
+   <widget class="QLabel" name="labelSpeed">
     <property name="geometry">
      <rect>
-      <x>650</x>
-      <y>720</y>
-      <width>111</width>
+      <x>400</x>
+      <y>740</y>
+      <width>451</width>
       <height>31</height>
      </rect>
     </property>

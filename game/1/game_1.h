@@ -2,6 +2,7 @@
 #define GAME_1_H
 
 #include <QMainWindow>
+#include <QTimer>
 
 namespace Ui {
 class Game1;
@@ -26,14 +27,24 @@ private slots:
 
     void onHit();
     void onMiss();
+    void on_pushButtonStop_clicked();
+
+    void restartGame();
+
+    void onTimeout();
 private:
     Ui::Game1 *ui;
 
     int hitCount;
-    int hitTotal = 0;
-
     int missCount;
-    int missTotal = 0;
+
+    double accuracy;
+    double speed;
+
+    int lvl;
+
+    QTimer gameTimer;
+    int gameTimerCounter;
 
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
                        "Инструкция: на экране появляется серия разноцветных мишеней разной формы и размера."
