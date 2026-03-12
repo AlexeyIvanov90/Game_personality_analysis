@@ -1,12 +1,12 @@
 import QtQuick 2.12
 
 Item {
-    signal onJump(int accuracy)
+    signal onObstacleOvercome()
     signal onCollision()
 
     id: root
-    width: 800
-    height: 300
+    width: 981
+    height: 641
     visible: true
 
     // Игровые параметры
@@ -26,7 +26,6 @@ Item {
 
     property var obstacles: []
     property var clouds: []
-    property var completedJumps: []  // список высот для успешно пройденных препятствий
 
     property int nextObstacleDist: 300
 
@@ -39,13 +38,6 @@ Item {
     // Остальные изображения
     property Image cactusImg: Image { source: "qrc:/source/source/img/game_2/cactus_transparent.png"; visible: false }
     property Image cloudImg: Image { source: "qrc:/source/source/img/game_2/cloud_transparent.png"; visible: false }
-
-    function startGame() {
-        if (!gameActive) {
-            resetGame()
-            gameActive = true
-        }
-    }
 
     function stopGame() {
         if (gameActive) {
@@ -60,26 +52,10 @@ Item {
         onGround = true
         obstacles = []
         clouds = []
-        completedJumps = []
         gameActive = true
         currentDinoFrame = 0
         gameTimer.restart()
         canvas.requestPaint()
-    }
-
-    // Возвращает расстояние в пикселях до ближайшего препятствия впереди (оставлено для отладки)
-    function distanceToNextObstacle() {
-        var minDist = -1;
-        for (var i = 0; i < obstacles.length; i++) {
-            var o = obstacles[i];
-            if (o.x > dinoX + dinoWidth) {
-                var dist = o.x - (dinoX + dinoWidth);
-                if (minDist === -1 || dist < minDist) {
-                    minDist = dist;
-                }
-            }
-        }
-        return minDist;
     }
 
     // Прыжок
@@ -106,17 +82,6 @@ Item {
             onGround = false
         }
 
-        // Если только что приземлились и есть завершённые прыжки – отправляем сигналы
-        if (!wasOnGround && onGround && completedJumps.length > 0) {
-            var maxHeight = (jumpStrength * jumpStrength) / (2 * gravity)
-            for (var h = 0; h < completedJumps.length; h++) {
-                var height = completedJumps[h]
-                var accuracy = Math.min(100, Math.round((height / maxHeight) * 100))
-                onJump(accuracy)
-            }
-            completedJumps = []
-        }
-
         // Движение препятствий с предварительной проверкой столкновений
         for (var i = obstacles.length - 1; i >= 0; i--) {
             var o = obstacles[i]
@@ -133,29 +98,10 @@ Item {
                 o.x = newX
             }
 
-            // Если препятствие полностью позади динозавра и у него есть высота – добавляем в completedJumps и удаляем
-            if (o.x + o.width < dinoX && o.heightWhenOver !== undefined) {
-                completedJumps.push(o.heightWhenOver)
-                obstacles.splice(i, 1)
-                continue
-            }
-
-            // Удаляем ушедшие за левый край (если не были обработаны выше)
+            // Удаляем ушедшие за левый край препятсвия
             if (o.x + o.width < 0) {
                 obstacles.splice(i, 1)
-            }
-        }
-
-        // Запоминаем высоту в момент пролёта над центром препятствия (если ещё не записано)
-        var dinoCenterX = dinoX + dinoWidth / 2
-        for (var k = 0; k < obstacles.length; k++) {
-            var obs = obstacles[k]
-            if (obs.heightWhenOver === undefined) {
-                var obsCenterX = obs.x + obs.width / 2
-                // Проверяем, находится ли центр динозавра в пределах ширины препятствия
-                if (Math.abs(dinoCenterX - obsCenterX) <= dinoWidth / 2) {
-                    obs.heightWhenOver = groundY - (dinoY + dinoHeight) // текущая высота подъёма
-                }
+                onObstacleOvercome()
             }
         }
 

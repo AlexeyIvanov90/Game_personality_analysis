@@ -2,6 +2,7 @@
 #define GAME_2_H
 
 #include <QMainWindow>
+#include <QTimer>
 
 namespace Ui {
 class Game2;
@@ -24,17 +25,30 @@ private slots:
 
     void on_pushButtonStop_clicked();
 
-    void onJump(int accuracy);
+
+    void restartGame();
+    void onObstacleOvercome();
     void onCollision();
     void on_spinBoxLVL_valueChanged(int arg1);
+    void onTimeout();
 private:
     Ui::Game2 *ui;
+
+    int lvl;
+
+    double accuracy;
+    double speed;
+
+    int obstacleOvercome;
+    int collisionCounter;
+
+    int gameTimerCounter;
+    QTimer gameTimer;
+
     QString gameInfo = "Цель игры: моделирование различных функциональных состояний, "
                        "определение уровня работоспобности в смоделированных функциональных состояниях\n"
                        "Инструкция: избегайте препятствий, количество препятствий растет с течением времени";
 
-    int jumpCounter=0;
-    int collisionCounter=0;
 };
 
 #endif // GAME_2_H
