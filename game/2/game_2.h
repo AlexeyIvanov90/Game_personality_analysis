@@ -25,11 +25,11 @@ private slots:
 
     void on_pushButtonStop_clicked();
 
+    void on_spinBoxLVL_valueChanged(int arg1);
 
     void restartGame();
     void onObstacleOvercome();
     void onCollision();
-    void on_spinBoxLVL_valueChanged(int arg1);
     void onTimeout();
 private:
     Ui::Game2 *ui;

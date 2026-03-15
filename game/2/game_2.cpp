@@ -47,27 +47,6 @@ Game2::~Game2()
     delete ui;
 }
 
-void Game2::onTimeout(){
-    gameTimerCounter++;
-
-    if (gameTimerCounter >= 5) {
-        on_pushButtonStop_clicked();
-        qDebug() << "Игра окончена";
-    }else{
-        if((obstacleOvercome+collisionCounter!=0))
-            accuracy = ((double)obstacleOvercome/(obstacleOvercome+collisionCounter))*100.;
-        else
-            accuracy = 0.;
-
-        speed = obstacleOvercome/60.;
-        ui->labelAccuracy->setText("Точность: " + QString::number(accuracy) + "%");
-        ui->labelSpeed->setText("Попаданий/сек: " + QString::number(speed));
-
-        obstacleOvercome=0;
-        collisionCounter=0;
-    }
-}
-
 void Game2::on_pushButtonClose_clicked()
 {
     close();
@@ -78,16 +57,6 @@ void Game2::on_pushButtonInfo_clicked()
     InfoDialog id;
     id.setInfo(gameInfo);
     id.exec();
-}
-
-void Game2::restartGame(){
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        bool success = QMetaObject::invokeMethod(root, "resetGame");
-        if (!success) {
-            qDebug() << "Не удалось вызвать функцию startGame";
-        }
-    }
 }
 
 void Game2::on_pushButtonStart_clicked()
@@ -114,6 +83,28 @@ void Game2::on_pushButtonStop_clicked()
     }
 }
 
+void Game2::on_spinBoxLVL_valueChanged(int arg1)
+{
+    lvl=arg1;
+    QObject *root = ui->quickWidgetGame->rootObject();
+    if (root) {
+        root->setProperty("speed", lvl);
+        qDebug() << "Новая скорость: " << lvl;
+    }
+
+    ui->quickWidgetGame->setFocus();
+}
+
+void Game2::restartGame(){
+    QObject *root = ui->quickWidgetGame->rootObject();
+    if (root) {
+        bool success = QMetaObject::invokeMethod(root, "resetGame");
+        if (!success) {
+            qDebug() << "Не удалось вызвать функцию startGame";
+        }
+    }
+}
+
 void Game2::onObstacleOvercome(){
     obstacleOvercome++;
     qDebug() << gameTimerCounter << " минута, препятсвий пройдено: " << obstacleOvercome;
@@ -125,14 +116,23 @@ void Game2::onCollision(){
     restartGame();
 }
 
-void Game2::on_spinBoxLVL_valueChanged(int arg1)
-{
-    lvl=arg1;
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        root->setProperty("speed", lvl);
-        qDebug() << "Новая скорость: " << lvl;
-    }
+void Game2::onTimeout(){
+    gameTimerCounter++;
 
-    ui->quickWidgetGame->setFocus();
+    if (gameTimerCounter >= 5) {
+        on_pushButtonStop_clicked();
+        qDebug() << "Игра окончена";
+    }else{
+        if((obstacleOvercome+collisionCounter!=0))
+            accuracy = ((double)obstacleOvercome/(obstacleOvercome+collisionCounter))*100.;
+        else
+            accuracy = 0.;
+
+        speed = obstacleOvercome/60.;
+        ui->labelAccuracy->setText("Точность: " + QString::number(accuracy) + "%");
+        ui->labelSpeed->setText("Попаданий/сек: " + QString::number(speed));
+
+        obstacleOvercome=0;
+        collisionCounter=0;
+    }
 }

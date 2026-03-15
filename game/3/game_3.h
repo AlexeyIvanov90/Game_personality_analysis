@@ -2,6 +2,7 @@
 #define GAME_3_H
 
 #include <QMainWindow>
+#include <QTimer>
 
 namespace Ui {
 class Game3;
@@ -20,23 +21,40 @@ private slots:
 
     void on_pushButtonInfo_clicked();
 
-    void on_pushButtonStart_clicked();
+    void on_pushButtonStart_clicked();    
 
-    void onCollision();
+    void on_pushButtonStop_clicked();
+
+    void on_spinBoxBallImpulse_valueChanged(int arg1);
+
+    void on_spinBoxBallTremor_valueChanged(int arg1);
+
+    void on_spinBoxLvl_valueChanged(int arg1);
+
+    void restartGame();
     void onHit();
-
-    void on_spinBoxBallSpeed_valueChanged(int arg1);
-
-    void on_doubleSpinBoxFriction_valueChanged(double arg1);
+    void onCollision();
+    void onTimeout();
 
 private:
     Ui::Game3 *ui;
+
+    double accuracy;
+    double speed;
+
+    int hitCounter;
+    int collisionCounter;
+
+    int ballTremor; // дрожание шарика
+    int ballImpulse; // импульс шарика от клавиш
+
+    int lvl;
+
+    int gameTimerCounter;
+    QTimer gameTimer;
+
     QString gameInfo = "Цель игры: определение \"человеческого фактора\", связь его с биоритмами\n"
                        "Инструкция: управляйте шариком, избегая препятствия и собирая цели по траектории";
-    int collisionCounter=0;
-    int hitCounter=0;
-    int ballSpeed=5; // импульс от клавиш
-    double friction=0.98; // трение (замедление)
 };
 
 #endif // GAME_3_H
