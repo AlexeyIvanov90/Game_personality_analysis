@@ -25,27 +25,39 @@ private slots:
 
     void on_pushButtonStart_clicked();
 
-    void onHit();
-    void onMiss();
     void on_pushButtonStop_clicked();
 
-    void restartGame();
-
-    void onTimeout();
+    void initGame();
+    void startNewLvl();
+    void onHit();
+    void onMiss();
+    void levelCompleted();
+    void autoLevelCalculation();
+    void startNewGame();
+    void stopGame();
+    void onTimeout();    
 private:
     Ui::Game1 *ui;
 
     int hitCount;
+    int hitPerMinuteCounter;
+    int allHitCount;
+
     int missCount;
+    int missPerMinuteCounter;
+    int allMissCount;
 
     double accuracy;
-    double speed;
+    int accuracyPerMinuteCounter;
+    double speed;    
 
     int lvl;
+    bool autoLvl;
+    int gameCount;
 
     QTimer gameTimer;
     int gameTimerCounter;
-
+    QObject* game;
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
                        "Инструкция: на экране появляется серия разноцветных мишеней разной формы и размера."
                        "Необходимо как можно быстрее кликнуть мышью в зонах появления мишени";
