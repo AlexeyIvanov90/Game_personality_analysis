@@ -1,6 +1,7 @@
 #include <QDebug>
 #include <QQmlEngine>
 #include <QQuickItem>
+#include <QDateTime>
 
 #include "game_1.h"
 #include "ui_game_1.h"
@@ -15,30 +16,32 @@ Game1::Game1(QWidget *parent)
 #ifdef QT_DEBUG
     QString qmlPath = "C:/Qt/5.14.2/mingw73_64/qml";
     ui->quickWidgetGame1->engine()->addImportPath(qmlPath);
-    qDebug() << "Debug: добавлен путь к QML:" << qmlPath;
 #endif
 
     ui->quickWidgetGame1->setSource(QUrl("qrc:/game/1/game_1.qml"));
 
-    if (ui->quickWidgetGame1->status() == QQuickWidget::Error) {
+    if (ui->quickWidgetGame1->status() == QQuickWidget::Error)
         qDebug() << "Ошибка загрузки QML";
-    }
 
     game = ui->quickWidgetGame1->rootObject();
     if (game) {
         connect(game, SIGNAL(hitShape()), this, SLOT(onHit()));
         connect(game, SIGNAL(missShape()), this, SLOT(onMiss()));
         connect(game, SIGNAL(levelCompleted()), this, SLOT(levelCompleted()));
-
     } else {
         qDebug() << "Не удалось получить корневой объект QML";
     }
 
-    connect(&gameTimer, &QTimer::timeout, this, &Game1::onTimeout);    
+    connect(&gameTimer, &QTimer::timeout, this, &Game1::onTimeout);
+    gameTimer.setInterval(60000);
+
+    connect(&displayedGameTimer, &QTimer::timeout, this, &Game1::updateDisplayedGameTime);
+    displayedGameTimer.setInterval(1000);
 }
 
 Game1::~Game1()
 {
+    stopGame();
     delete ui;
 }
 
@@ -62,11 +65,6 @@ void Game1::on_pushButtonStart_clicked()
 void Game1::on_pushButtonStop_clicked()
 {
     stopGame();
-}
-
-void Game1::on_spinBoxLVL_valueChanged(int arg1)
-{
-    lvl = arg1;
 }
 
 void Game1::onHit()
@@ -97,6 +95,7 @@ void Game1::initGame(){
     autoLvl=true;
     gameCount=0;
     gameTimerCounter=0;
+    startGameTime =  QDateTime::currentMSecsSinceEpoch();
 }
 
 void Game1::startNewLvl(){
@@ -124,33 +123,45 @@ void Game1::autoLevelCalculation(){
         else
             lvlAccuracy = 0.;
 
-        if(lvlAccuracy>95.)
+        if(lvlAccuracy>90.){
             lvl++;
-
-        if(lvlAccuracy<50.)
-            lvl--;
+            sendMessage("Уровень изменён на " + QString::number(lvl), 1000);
+        }
 
         qDebug() << "Точность за уровень: " << lvlAccuracy << " авто уровень: " << lvl;
     }else if(autoLvl){
         autoLvl=false;
-        lvl = lvl*0.80;
+        lvl = lvl*0.85;
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
 }
 
 void Game1::startNewGame(){
+    sendMessage("Старт игры", 1000);
+
     initGame();
-    gameTimer.start(100000);
+    gameTimer.start();
+    displayedGameTimer.start();
     startNewLvl();
 }
 
 void Game1::stopGame(){
+    sendMessage("Конец игры\nТочность " + QString::number(accuracy)+ " %\nСкорость " + QString::number(speed) + " объектов/сек");
+
     gameTimer.stop();
+    displayedGameTimer.stop();
     if (game) {
         bool success = QMetaObject::invokeMethod(game, "stopGame");
-        if (!success) {
+        if (!success)
             qDebug() << "Не удалось вызвать функцию stopGame";
-        }
+    }
+}
+
+void Game1::sendMessage(QString message, int sec){
+    if (game) {
+        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, sec) );
+        if (!success)
+            qDebug() << "Не удалось вызвать функцию showTempMessage";
     }
 }
 
@@ -178,7 +189,17 @@ void Game1::onTimeout()
 
     hitPerMinuteCounter=0;
     missPerMinuteCounter=0;
-
-    ui->labelAccuracy->setText("Точность за игру: " + QString::number(accuracy) + "%");
-    ui->labelSpeed->setText("Попаданий/сек за игру: " + QString::number(speed));
 }
+
+void Game1::updateDisplayedGameTime(){
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+    qint64 elapsedSeconds = (currentTime - startGameTime) / 1000;
+
+    int minutes = elapsedSeconds / 60;
+    int seconds = elapsedSeconds % 60;
+
+    ui->labelGameTimer->setText( QString("%1:%2")
+                       .arg(minutes, 2, 10, QChar('0'))
+                                    .arg(seconds, 2, 10, QChar('0')));
+}
+

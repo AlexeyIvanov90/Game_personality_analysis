@@ -29,6 +29,59 @@ Item {
         }
     }
 
+    // Компонент для отображения временных сообщений
+    Rectangle {
+        id: tempMessageBox
+        anchors.centerIn: parent
+        color: "#88000000" // полупрозрачный черный
+        radius: 10
+        visible: false
+        z: 9999 // всегда поверх других элементов
+
+        property alias text: messageText.text
+
+        width: messageText.width + 40
+        height: messageText.height + 20
+
+        Text {
+            id: messageText
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 18
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        Timer {
+            id: messageTimer
+            onTriggered: {
+                if (interval > 0) { // Не скрываем, если interval == 0
+                    tempMessageBox.visible = false
+                }
+            }
+        }
+    }
+
+    // Универсальная функция для отображения сообщений
+    function showTempMessage(message, duration = 2000) {
+        tempMessageBox.text = message
+        tempMessageBox.visible = true
+
+        if (duration > 0) {
+            messageTimer.interval = duration
+            messageTimer.start()
+        } else if (duration === 0) {
+            messageTimer.stop()
+        }
+    }
+
+    // Функция для скрытия сообщения (полезно для постоянных сообщений)
+    function hideTempMessage() {
+        tempMessageBox.visible = false
+        messageTimer.stop()
+    }
+
     // Генерация случайных параметров фигуры (без номера)
     function createRandomShape() {
         var newSize = 50 + Math.random() * 100

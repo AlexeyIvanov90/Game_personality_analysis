@@ -21,8 +21,6 @@ private slots:
 
     void on_pushButtonInfo_clicked();
 
-    void on_spinBoxLVL_valueChanged(int arg1);
-
     void on_pushButtonStart_clicked();
 
     void on_pushButtonStop_clicked();
@@ -35,7 +33,9 @@ private slots:
     void autoLevelCalculation();
     void startNewGame();
     void stopGame();
-    void onTimeout();    
+    void onTimeout();
+    void sendMessage(QString message, int sec=0);
+    void updateDisplayedGameTime();
 private:
     Ui::Game1 *ui;
 
@@ -54,8 +54,10 @@ private:
     int lvl;
     bool autoLvl;
     int gameCount;
-
     QTimer gameTimer;
+    QTimer displayedGameTimer;
+    qint64 startGameTime;
+
     int gameTimerCounter;
     QObject* game;
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
