@@ -7,6 +7,9 @@
 #include "ui_game_1.h"
 #include "../../GUI/info_dialog/info_dialog.h"
 
+#define MAX_GAME_MINUTES  10
+#define MIN_ACCURACY_PERCENT_PER_MINUTE 50
+
 Game1::Game1(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Game1)
@@ -67,38 +70,35 @@ void Game1::on_pushButtonStop_clicked()
     stopGame();
 }
 
-void Game1::onHit()
-{
+void Game1::onHit(){
     allHitCount++;
-    hitPerMinuteCounter++;
-    hitCount++;
 }
 
-void Game1::onMiss()
-{
-    missCount++;
-    missPerMinuteCounter++;
-    allMissCount++;
+void Game1::onMiss(){   
+    lvlLossPerMinuteCounter++;
+    gameLossCounter++;
+
+    autoLevelCalculation(Game1Event::Miss);
+    startNewLvl();
 }
 
 void Game1::initGame(){
-    hitCount=0;
-    hitPerMinuteCounter=0;
+    lvlVictoryPerMinuteCounter=0;
     allHitCount=0;
-    missCount=0;
-    missPerMinuteCounter=0;
-    allMissCount=0;
+    lvlLossPerMinuteCounter=0;
     accuracy=0.;
     accuracyPerMinuteCounter=0.;
     speed=0.;
     lvl=2;
     autoLvl=true;
-    gameCount=0;
+    gameVictoryCounter=0;
+    gameLossCounter=0;
     gameTimerCounter=0;
     startGameTime =  QDateTime::currentMSecsSinceEpoch();
 }
 
 void Game1::startNewLvl(){
+
     if (game) {
         bool success = QMetaObject::invokeMethod(game, "startGame", Q_ARG(QVariant, lvl));
         if (!success) {
@@ -107,31 +107,23 @@ void Game1::startNewLvl(){
     }
 }
 
-void Game1::levelCompleted(){
-    autoLevelCalculation();
-    startNewLvl();
+void Game1::levelCompleted(){    
+    gameVictoryCounter++;
+    lvlVictoryPerMinuteCounter++;
 
-    hitCount=0;
-    missCount=0;
+    autoLevelCalculation(Game1Event::Hit);
+    startNewLvl();
 }
 
-void Game1::autoLevelCalculation(){
-    if(gameTimerCounter<1){
-        double lvlAccuracy;
-        if((hitCount+missCount!=0))
-            lvlAccuracy = ((double)hitCount/(hitCount+missCount))*100.;
-        else
-            lvlAccuracy = 0.;
+void Game1::autoLevelCalculation(Game1Event event){
+    if(gameTimerCounter<1 && event == Game1Event::Hit){
+        lvl++;
+        qDebug() << "Уровень повышен до " <<  lvl;
+    }
 
-        if(lvlAccuracy>90.){
-            lvl++;
-            sendMessage("Уровень изменён на " + QString::number(lvl), 1000);
-        }
-
-        qDebug() << "Точность за уровень: " << lvlAccuracy << " авто уровень: " << lvl;
-    }else if(autoLvl){
+    if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = lvl*0.85;
+        lvl = (lvl-1.)*0.80;
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
 }
@@ -146,6 +138,13 @@ void Game1::startNewGame(){
 }
 
 void Game1::stopGame(){
+    if((gameVictoryCounter+gameLossCounter!=0))
+        accuracy = ((double)gameVictoryCounter/(gameVictoryCounter+gameLossCounter))*100.;
+    else
+        accuracy = 0.;
+
+    speed = allHitCount/(60.*(gameTimerCounter+1));
+
     sendMessage("Конец игры\nТочность " + QString::number(accuracy)+ " %\nСкорость " + QString::number(speed) + " объектов/сек");
 
     gameTimer.stop();
@@ -169,26 +168,19 @@ void Game1::onTimeout()
 {
     gameTimerCounter++;
 
-    if(gameTimerCounter == 10)
+    if(gameTimerCounter == MAX_GAME_MINUTES)
         stopGame();
 
-    if((allHitCount+allMissCount!=0))
-        accuracy = ((double)allHitCount/(allHitCount+allMissCount))*100.;
-    else
-        accuracy = 0.;
-
-    speed = allHitCount/(60.*(gameTimerCounter+1));
-
-    if((hitPerMinuteCounter+missPerMinuteCounter!=0))
-        accuracyPerMinuteCounter = ((double)hitPerMinuteCounter/(hitPerMinuteCounter+missPerMinuteCounter))*100.;
+    if((lvlVictoryPerMinuteCounter+lvlLossPerMinuteCounter!=0))
+        accuracyPerMinuteCounter = ((double)lvlVictoryPerMinuteCounter/(lvlVictoryPerMinuteCounter+lvlLossPerMinuteCounter))*100.;
     else
         accuracyPerMinuteCounter = 0.;
 
-    if(gameTimerCounter > 1 && accuracyPerMinuteCounter < 50.)
+    if(gameTimerCounter > 1 && accuracyPerMinuteCounter < MIN_ACCURACY_PERCENT_PER_MINUTE)
         stopGame();
 
-    hitPerMinuteCounter=0;
-    missPerMinuteCounter=0;
+    lvlVictoryPerMinuteCounter=0;
+    lvlLossPerMinuteCounter=0;
 }
 
 void Game1::updateDisplayedGameTime(){
@@ -202,4 +194,3 @@ void Game1::updateDisplayedGameTime(){
                        .arg(minutes, 2, 10, QChar('0'))
                                     .arg(seconds, 2, 10, QChar('0')));
 }
-

@@ -8,6 +8,11 @@ namespace Ui {
 class Game1;
 }
 
+enum class Game1Event {
+    Hit,
+    Miss
+};
+
 class Game1 : public QMainWindow
 {
     Q_OBJECT
@@ -30,7 +35,7 @@ private slots:
     void onHit();
     void onMiss();
     void levelCompleted();
-    void autoLevelCalculation();
+    void autoLevelCalculation(Game1Event event);
     void startNewGame();
     void stopGame();
     void onTimeout();
@@ -39,13 +44,10 @@ private slots:
 private:
     Ui::Game1 *ui;
 
-    int hitCount;
-    int hitPerMinuteCounter;
+    int lvlVictoryPerMinuteCounter;
     int allHitCount;
 
-    int missCount;
-    int missPerMinuteCounter;
-    int allMissCount;
+    int lvlLossPerMinuteCounter;
 
     double accuracy;
     int accuracyPerMinuteCounter;
@@ -53,7 +55,10 @@ private:
 
     int lvl;
     bool autoLvl;
-    int gameCount;
+
+    int gameVictoryCounter;
+    int gameLossCounter;
+
     QTimer gameTimer;
     QTimer displayedGameTimer;
     qint64 startGameTime;

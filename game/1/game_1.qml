@@ -25,7 +25,6 @@ Item {
         interval: difficulty*500
         onTriggered: {
             waitingForNumbers = false
-            console.log("Номера скрыты")
         }
     }
 
@@ -159,7 +158,6 @@ Item {
         waitingForNumbers = true
         numberTimer.restart()
         nextExpectedNumber = 1
-        console.log("Новый раунд, номера:", numbers)
     }
 
     // Обработка клика по фигуре
@@ -168,19 +166,15 @@ Item {
 
         var number = shapeModel.get(index).number
         if (number === nextExpectedNumber) {
-            // Правильный порядок
             shapeModel.remove(index)
             hitShape()
             nextExpectedNumber++
-            console.log("Правильно, осталось фигур:", shapeModel.count)
 
             if (shapeModel.count === 0) {
                 levelCompleted()
-                console.log("Раунд завершён!")
             }
         } else {
             missShape()
-            console.log("Ошибка порядка")
         }
     }
 
@@ -222,7 +216,6 @@ Item {
         onClicked: {
             if(gameRun==true){
                 missShape()
-                console.log("Промах по фону")
             }
         }
     }
