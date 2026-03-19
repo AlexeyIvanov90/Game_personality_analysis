@@ -8,6 +8,11 @@ namespace Ui {
 class Game2;
 }
 
+enum class Game2Event {
+    Success,
+    Collision
+};
+
 class Game2 : public QMainWindow
 {
     Q_OBJECT
@@ -25,30 +30,44 @@ private slots:
 
     void on_pushButtonStop_clicked();
 
-    void on_spinBoxLVL_valueChanged(int arg1);
-
+    void initGame();
     void restartGame();
-    void onObstacleOvercome();
+    void autoLevelCalculation(Game2Event event);
+    void updateLvl();
+    void onSuccessCounter();
     void onCollision();
     void onTimeout();
+    void updateDisplayedGameTime();
+    void sendMessage(QString message, int sec=0);
+    void stopGame();
+
 private:
     Ui::Game2 *ui;
 
     int lvl;
+    bool autoLvl;
 
     double accuracy;
     double speed;
 
-    int obstacleOvercome;
+    int successCounter;
     int collisionCounter;
+
+    int successPerMinuteCounter;
+    int collisionPerMinuteCounter;
+    double accuracyPerMinuteCounter;
 
     int gameTimerCounter;
     QTimer gameTimer;
 
+    QTimer displayedGameTimer;
+    qint64 startGameTime;
+
+    QObject* game;
+
     QString gameInfo = "Цель игры: моделирование различных функциональных состояний, "
                        "определение уровня работоспобности в смоделированных функциональных состояниях\n"
                        "Инструкция: избегайте препятствий, количество препятствий растет с течением времени";
-
 };
 
 #endif // GAME_2_H

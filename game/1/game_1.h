@@ -60,10 +60,11 @@ private:
     int gameLossCounter;
 
     QTimer gameTimer;
+    int gameTimerCounter;
+
     QTimer displayedGameTimer;
     qint64 startGameTime;
 
-    int gameTimerCounter;
     QObject* game;
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
                        "Инструкция: на экране появляется серия разноцветных мишеней разной формы и размера."

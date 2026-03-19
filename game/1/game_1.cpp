@@ -95,6 +95,9 @@ void Game1::initGame(){
     gameLossCounter=0;
     gameTimerCounter=0;
     startGameTime =  QDateTime::currentMSecsSinceEpoch();
+
+    gameTimer.start();
+    displayedGameTimer.start();
 }
 
 void Game1::startNewLvl(){
@@ -123,7 +126,7 @@ void Game1::autoLevelCalculation(Game1Event event){
 
     if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = (lvl-1.)*0.80;
+        lvl = lvl*0.8;
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
 }
@@ -132,8 +135,7 @@ void Game1::startNewGame(){
     sendMessage("Старт игры", 1000);
 
     initGame();
-    gameTimer.start();
-    displayedGameTimer.start();
+
     startNewLvl();
 }
 
