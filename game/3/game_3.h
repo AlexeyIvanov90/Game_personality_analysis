@@ -40,7 +40,7 @@ private slots:
     void onHit();
     void onCollision();
     void setBallTremor();
-    void setBallImpulse();
+    void setBallSpeed();
 
     void sendMessage(QString message, int sec=0);
 
@@ -64,7 +64,7 @@ private:
     int gameLossCounter;
 
     int ballTremor; // дрожание шарика
-    int ballImpulse; // импульс шарика от клавиш
+    int ballSpeed; // импульс шарика от клавиш
 
     int lvl;
     int autoLvl;

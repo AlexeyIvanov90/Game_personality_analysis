@@ -96,7 +96,7 @@ void Game3::initGame(){
     gameLossCounter=0;
 
     ballTremor=0; // дрожание шарика
-    ballImpulse=0; // импульс шарика от клавиш
+    ballSpeed=0; // импульс шарика от клавиш
 
     lvl=MIN_LVL;
     autoLvl=true;
@@ -192,10 +192,10 @@ void Game3::setBallTremor(){
         qDebug() << "Угол дрожания: " << ballTremor;
     }
 }
-void Game3::setBallImpulse(){
+void Game3::setBallSpeed(){
     if (game) {
-        game->setProperty("ballImpulse", ballImpulse); // импульс
-        qDebug() << "Новый импульс: " << ballImpulse;
+        game->setProperty("ballSpeed", ballSpeed); // скорость
+        qDebug() << "Новая скорость: " << ballSpeed;
     }
 }
 

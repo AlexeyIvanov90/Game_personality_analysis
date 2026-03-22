@@ -11,16 +11,17 @@ Item {
 
     // Параметры игры
     property int ballRadius: 20
-    property double ballImpulse: 5         // импульс от клавиш
-    property double ballTremor: 0         // дрожание шарика (диапазон отклонения в градусах)
-    property int difficulty: 5                    // количество препятствий и целей
+    property double ballSpeed: 5           // постоянная скорость шарика
+    property double ballTremor: 0          // дрожание шарика (диапазон отклонения в градусах)
+    property int difficulty: 5             // количество препятствий и целей
 
-    property double friction: 0.98         // трение
     property bool gameActive: false
+    property bool controlsEnabled: false   // флаг разрешения управления (включится через 1 секунду)
+    property bool movementEnabled: false   // флаг движения (включится при первом нажатии после controlsEnabled)
 
-    // Скорость шарика по осям
-    property double vx: 0
-    property double vy: 0
+    // Направление движения шарика (единичный вектор)
+    property double directionX: 0
+    property double directionY: 0
 
     // Модели данных
     ListModel { id: obstacleModel }
@@ -30,10 +31,10 @@ Item {
     Rectangle {
         id: tempMessageBox
         anchors.centerIn: parent
-        color: "#88000000" // полупрозрачный черный
+        color: "#88000000"
         radius: 10
         visible: false
-        z: 9999 // всегда поверх других элементов
+        z: 9999
 
         property alias text: messageText.text
 
@@ -53,10 +54,19 @@ Item {
         Timer {
             id: messageTimer
             onTriggered: {
-                if (interval > 0) { // Не скрываем, если interval == 0
+                if (interval > 0) {
                     tempMessageBox.visible = false
                 }
             }
+        }
+    }
+
+    // Таймер для задержки перед включением управления
+    Timer {
+        id: controlsEnableTimer
+        interval: 1000  // 1 секунда
+        onTriggered: {
+            controlsEnabled = true;
         }
     }
 
@@ -73,7 +83,7 @@ Item {
         }
     }
 
-    // Функция для скрытия сообщения (полезно для постоянных сообщений)
+    // Функция для скрытия сообщения
     function hideTempMessage() {
         tempMessageBox.visible = false
         messageTimer.stop()
@@ -95,7 +105,6 @@ Item {
         return dist < r1 + r2;
     }
 
-    // ----- Функция для проверки пересечения прямоугольников -----
     function rectRectCollision(rect1, rect2) {
         return !(rect2.x >= rect1.x + rect1.width ||
                  rect2.x + rect2.width <= rect1.x ||
@@ -103,15 +112,12 @@ Item {
                  rect2.y + rect2.height <= rect1.y);
     }
 
-    // ----- Функция для проверки наложения препятствия -----
     function isValidObstaclePosition(x, y, width, height, obstacles, ballPos, ballRad, gameWidth, gameHeight) {
-        // Проверка выхода за границы экрана
         if (x < 20 || x + width > gameWidth - 20 ||
             y < 20 || y + height > gameHeight - 20) {
             return false;
         }
 
-        // Проверка наложения с другими препятствиями
         for (var i = 0; i < obstacles.length; i++) {
             var obs = obstacles[i];
             if (rectRectCollision({x: x, y: y, width: width, height: height},
@@ -120,7 +126,6 @@ Item {
             }
         }
 
-        // Проверка наложения с позицией шарика
         if (circleRectCollision(ballPos.x + ballRad, ballPos.y + ballRad, ballRad * 2,
                                {x: x, y: y, width: width, height: height})) {
             return false;
@@ -129,15 +134,12 @@ Item {
         return true;
     }
 
-    // ----- Функция для проверки наложения цели -----
     function isValidTargetPosition(x, y, radius, targets, ballPos, ballRad, obstacles, gameWidth, gameHeight) {
-        // Проверка выхода за границы экрана
         if (x - radius < 10 || x + radius > gameWidth - 10 ||
             y - radius < 10 || y + radius > gameHeight - 10) {
             return false;
         }
 
-        // Проверка наложения с другими целями
         for (var i = 0; i < targets.length; i++) {
             var tar = targets[i];
             var dx = x - tar.x;
@@ -148,7 +150,6 @@ Item {
             }
         }
 
-        // Проверка наложения с препятствиями
         for (var j = 0; j < obstacles.length; j++) {
             var obs = obstacles[j];
             if (circleRectCollision(x, y, radius + 20,
@@ -157,7 +158,6 @@ Item {
             }
         }
 
-        // Проверка наложения с позицией шарика
         var dxBall = x - (ballPos.x + ballRad);
         var dyBall = y - (ballPos.y + ballRad);
         var distBall = Math.sqrt(dxBall*dxBall + dyBall*dyBall);
@@ -168,7 +168,6 @@ Item {
         return true;
     }
 
-    // ----- Функция для генерации случайных размеров препятствия -----
     function getRandomObstacleSize() {
         return {
             width: 50 + Math.floor(Math.random() * 70),
@@ -176,7 +175,6 @@ Item {
         };
     }
 
-    // ----- Функция для применения дрожания к направлению движения -----
     function applyTremor(dx, dy) {
         if (ballTremor === 0) {
             return {dx: dx, dy: dy};
@@ -192,25 +190,63 @@ Item {
         var currentAngle = Math.atan2(normDy, normDx);
         var tremorRad = (Math.random() * 2 - 1) * ballTremor * Math.PI / 180;
         var newAngle = currentAngle + tremorRad;
-        var newDx = Math.cos(newAngle) * length;
-        var newDy = Math.sin(newAngle) * length;
+        var newDx = Math.cos(newAngle);
+        var newDy = Math.sin(newAngle);
 
         return {dx: newDx, dy: newDy};
-    }    
+    }
 
-    // ----- Инициализация / сброс -----
+    function updateDirection(newDirX, newDirY) {
+        // Обновляем направление только если управление активно и движение разрешено
+        if (!controlsEnabled || !movementEnabled) return;
+
+        var tremorResult = applyTremor(newDirX, newDirY);
+        directionX = tremorResult.dx;
+        directionY = tremorResult.dy;
+
+        var len = Math.sqrt(directionX * directionX + directionY * directionY);
+        if (len > 0) {
+            directionX /= len;
+            directionY /= len;
+        }
+    }
+
+    // Функция для старта движения (вызывается при первом нажатии клавиши)
+    function startMovement(firstDirX, firstDirY) {
+        if (!controlsEnabled) return;
+        if (movementEnabled) return;
+
+        movementEnabled = true;
+
+        // Устанавливаем начальное направление
+        var tremorResult = applyTremor(firstDirX, firstDirY);
+        directionX = tremorResult.dx;
+        directionY = tremorResult.dy;
+
+        var len = Math.sqrt(directionX * directionX + directionY * directionY);
+        if (len > 0) {
+            directionX /= len;
+            directionY /= len;
+        }
+    }
+
     function startGame(lvl) {
+        // Сбрасываем все флаги
+        movementEnabled = false;
+        controlsEnabled = false;
+
+        // Останавливаем таймер, если был запущен
+        controlsEnableTimer.stop();
+
         obstacleModel.clear();
         targetModel.clear();
 
-        difficulty=lvl
+        difficulty = lvl;
 
-        // Начальная позиция шарика (центр экрана)
         var ballStartX = width / 2 - ballRadius;
         var ballStartY = height / 2 - ballRadius;
         var ballPos = {x: ballStartX, y: ballStartY};
 
-        // Генерация препятствий (используем ту же логику, что и в regenerateLevel)
         var tempObstacles = [];
         var maxAttempts = 1000;
         var gameWidth = width;
@@ -231,7 +267,6 @@ Item {
             }
 
             if (!placed) {
-                // Упрощенная логика размещения как в regenerateLevel
                 for (var attempt2 = 0; attempt2 < 100 && !placed; attempt2++) {
                     var fallbackX = 50 + Math.random() * (gameWidth - 150);
                     var fallbackY = 50 + Math.random() * (gameHeight - 150);
@@ -264,7 +299,6 @@ Item {
             obstacleModel.append(tempObstacles[n]);
         }
 
-        // Генерация целей
         var tempTargets = [];
 
         for (var j = 0; j < difficulty; j++) {
@@ -317,28 +351,54 @@ Item {
 
         ball.x = ballStartX;
         ball.y = ballStartY;
-        vx = 0;
-        vy = 0;
+
+        directionX = 0;
+        directionY = 0;
+
         gameActive = true;
+
+        // Запускаем таймер задержки управления
+        controlsEnableTimer.start();
     }
 
     function stopGame() {
         gameActive = false;
+        movementEnabled = false;
+        controlsEnabled = false;
+        controlsEnableTimer.stop();
     }
 
-    // ----- Игровые объекты -----
+    // Игровые объекты
     Rectangle {
         id: ball
         x: parent.width / 2 - ballRadius
         y: parent.height / 2 - ballRadius
-        width: ballRadius*2
-        height: ballRadius*2
+        width: ballRadius * 2
+        height: ballRadius * 2
         radius: ballRadius
         color: "blue"
         visible: gameActive
+
+        // Добавляем эффект пульсации во время ожидания управления
+        scale: (gameActive && !controlsEnabled) ? 1.2 :
+               (gameActive && controlsEnabled && !movementEnabled) ? 1.1 : 1.0
+        Behavior on scale {
+            NumberAnimation { duration: 300; easing.type: Easing.InOutQuad }
+        }
+
+        // Добавляем свечение для индикации состояния
+        Rectangle {
+            anchors.fill: parent
+            radius: parent.radius
+            color: "transparent"
+            border.color: !controlsEnabled ? "yellow" :
+                         (controlsEnabled && !movementEnabled) ? "orange" : "transparent"
+            border.width: 3
+        }
     }
 
     Repeater {
+        id: obstacleRepeater
         model: obstacleModel
         Rectangle {
             x: model.x
@@ -353,12 +413,13 @@ Item {
     }
 
     Repeater {
+        id: targetRepeater
         model: targetModel
         Rectangle {
             x: model.x - model.radius
             y: model.y - model.radius
-            width: model.radius*2
-            height: model.radius*2
+            width: model.radius * 2
+            height: model.radius * 2
             radius: model.radius
             color: "green"
             border.color: "darkgreen"
@@ -367,55 +428,94 @@ Item {
         }
     }
 
-    // ----- Управление только с клавиатуры -----
+    // Управление с клавиатуры
     Item {
         id: inputHandler
         anchors.fill: parent
         focus: true
 
+        property var activeKeys: ({})
+
+        function updateCombinedDirection() {
+            var sumX = 0;
+            var sumY = 0;
+
+            if (activeKeys[16777234] || activeKeys[65]) sumX -= 1;  // Left или A
+            if (activeKeys[16777236] || activeKeys[68]) sumX += 1;  // Right или D
+            if (activeKeys[16777235] || activeKeys[87]) sumY -= 1;  // Up или W
+            if (activeKeys[16777237] || activeKeys[83]) sumY += 1;  // Down или S
+
+            if (sumX !== 0 || sumY !== 0) {
+                // Если движение еще не начато, начинаем его с первого нажатия
+                if (!movementEnabled && controlsEnabled) {
+                    startMovement(sumX, sumY);
+                } else if (movementEnabled) {
+                    updateDirection(sumX, sumY);
+                }
+            }
+        }
+
         Keys.onPressed: {
-            if (!gameActive) return;
+            if (!gameActive || !controlsEnabled) return;
 
-            var impulseX = 0;
-            var impulseY = 0;
+            // Запоминаем нажатую клавишу
+            activeKeys[event.key] = true;
 
-            if (event.key === Qt.Key_Left || event.key === Qt.Key_A) {
-                impulseX = -ballImpulse;
-            } else if (event.key === Qt.Key_Right || event.key === Qt.Key_D) {
-                impulseX = ballImpulse;
-            } else if (event.key === Qt.Key_Up || event.key === Qt.Key_W) {
-                impulseY = -ballImpulse;
-            } else if (event.key === Qt.Key_Down || event.key === Qt.Key_S) {
-                impulseY = ballImpulse;
+            // Для одиночных нажатий без комбинаций
+            if (!movementEnabled) {
+                var singleDirX = 0;
+                var singleDirY = 0;
+
+                if (event.key === Qt.Key_Left || event.key === Qt.Key_A) singleDirX = -1;
+                else if (event.key === Qt.Key_Right || event.key === Qt.Key_D) singleDirX = 1;
+                else if (event.key === Qt.Key_Up || event.key === Qt.Key_W) singleDirY = -1;
+                else if (event.key === Qt.Key_Down || event.key === Qt.Key_S) singleDirY = 1;
+
+                if (singleDirX !== 0 || singleDirY !== 0) {
+                    startMovement(singleDirX, singleDirY);
+                }
+            } else {
+                updateCombinedDirection();
             }
+        }
 
-            if (impulseX !== 0 || impulseY !== 0) {
-                var tremorResult = applyTremor(impulseX, impulseY);
-                vx += tremorResult.dx;
-                vy += tremorResult.dy;
-            }
+        Keys.onReleased: {
+            if (!gameActive || !controlsEnabled || !movementEnabled) return;
+            delete activeKeys[event.key];
+            updateCombinedDirection();
         }
     }
 
-    // ----- Таймер игрового цикла -----
+    // Таймер игрового цикла
     Timer {
+        id: gameLoopTimer
         interval: 16
         running: true
         repeat: true
         onTriggered: {
-            if (!gameActive) return;
+            if (!gameActive || !movementEnabled) return;
 
-            vx *= friction;
-            vy *= friction;
-
-            var newX = ball.x + vx;
-            var newY = ball.y + vy;
+            // Движение с постоянной скоростью
+            var newX = ball.x + directionX * ballSpeed;
+            var newY = ball.y + directionY * ballSpeed;
 
             // Границы с отскоком
-            if (newX < 0) { newX = 0; vx = -vx * 0.5; }
-            if (newX > parent.width - ball.width) { newX = parent.width - ball.width; vx = -vx * 0.5; }
-            if (newY < 0) { newY = 0; vy = -vy * 0.5; }
-            if (newY > parent.height - ball.height) { newY = parent.height - ball.height; vy = -vy * 0.5; }
+            if (newX < 0) {
+                newX = 0;
+                directionX = -directionX;
+            }
+            if (newX > parent.width - ball.width) {
+                newX = parent.width - ball.width;
+                directionX = -directionX;
+            }
+            if (newY < 0) {
+                newY = 0;
+                directionY = -directionY;
+            }
+            if (newY > parent.height - ball.height) {
+                newY = parent.height - ball.height;
+                directionY = -directionY;
+            }
 
             ball.x = newX;
             ball.y = newY;
@@ -426,7 +526,9 @@ Item {
                 if (circleRectCollision(ball.x + ballRadius, ball.y + ballRadius, ballRadius,
                                         {x: obs.x, y: obs.y, width: obs.width, height: obs.height})) {
                     gameActive = false;
-                    onCollision()
+                    movementEnabled = false;
+                    controlsEnabled = false;
+                    onCollision();
                     return;
                 }
             }
@@ -437,14 +539,16 @@ Item {
                 if (circleCircleCollision(ball.x + ballRadius, ball.y + ballRadius, ballRadius,
                                           tar.x, tar.y, tar.radius)) {
                     targetModel.remove(j);
-                    onHit()
+                    onHit();
                 }
             }
 
-            // Если цели кончились – генерируем новый уровень (и цели, и препятствия) с шариком в центре
+            // Если цели кончились – завершаем уровень
             if (targetModel.count === 0 && gameActive) {
+                gameActive = false;
+                movementEnabled = false;
+                controlsEnabled = false;
                 levelCompleted();
-                //regenerateLevel();
             }
         }
     }
