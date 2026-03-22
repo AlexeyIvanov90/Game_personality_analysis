@@ -3,10 +3,15 @@
         <file>source/img/icon/icon.ico</file>
         <file>source/setting_app.json</file>
         <file>source/img/button/info.png</file>
-        <file>source/img/game_2/cactus_transparent.png</file>
-        <file>source/img/game_2/cloud_transparent.png</file>
-        <file>source/img/game_2/dino_1_transparent.png</file>
-        <file>source/img/game_2/dino_2_transparent.png</file>
+        <file>source/img/game_2/dino_1_tr.png</file>
+        <file>source/img/game_2/dino_2_tr.png</file>
+        <file>source/img/game_2/pterodactyl_1_tr.png</file>
+        <file>source/img/game_2/pterodactyl_2_tr.png</file>
+        <file>source/img/game_2/dino_duck_1_tr.png</file>
+        <file>source/img/game_2/dino_duck_2_tr.png</file>
+        <file>source/img/game_2/cactus_big_1_tp.png</file>
+        <file>source/img/game_2/cactus_small_1_tp.png</file>
+        <file>source/img/game_2/cloud_tp.png</file>
     </qresource>
     <qresource prefix="/">
         <file>game/1/game_1.qml</file>

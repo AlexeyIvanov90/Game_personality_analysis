@@ -133,9 +133,7 @@ void Game1::autoLevelCalculation(Game1Event event){
 
 void Game1::startNewGame(){
     sendMessage("Старт игры", 1000);
-
     initGame();
-
     startNewLvl();
 }
 

@@ -9,7 +9,9 @@
 #define MAX_GAME_MINUTES  10
 
 #define MIN_LVL  5
-#define MAX_LVL  20
+#define MAX_LVL  38
+#define SUCCSESS_TO_NEXT_LVL  0
+#define PERCENT_OF_MAXIMUM_LEVEL 0.8
 
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 
@@ -39,7 +41,7 @@ Game2::Game2(QWidget *parent)
     game = ui->quickWidgetGame->rootObject();
     if (game) {
         // Подключаем сигналы из QML к слотам C++
-        connect(game, SIGNAL(onSuccessCounter()), this, SLOT(onSuccessCounter()));
+        connect(game, SIGNAL(onSuccess()), this, SLOT(onSuccess()));
         connect(game, SIGNAL(onCollision()), this, SLOT(onCollision()));
     } else {
         qDebug() << "Не удалось получить корневой объект QML";
@@ -73,6 +75,7 @@ void Game2::on_pushButtonInfo_clicked()
 
 void Game2::on_pushButtonStart_clicked()
 {
+    sendMessage("Старт игры", 1000);
     initGame();
     restartGame();
     ui->quickWidgetGame->setFocus();
@@ -96,6 +99,7 @@ void Game2::initGame(){
     speed=0.;
 
     lvl=MIN_LVL;
+    lvlSuccessCounter=0;
     updateLvl();
 
     autoLvl=false;
@@ -133,13 +137,19 @@ void Game2::stopGame(){
     }
 }
 
-void Game2::onSuccessCounter(){
+void Game2::onSuccess(){
+    qDebug() << "onSuccess";
     successCounter++;
+    successPerMinuteCounter++;
+    lvlSuccessCounter++;
     autoLevelCalculation(Game2Event::Success);
 }
 
 void Game2::onCollision(){
+    qDebug() << "onCollision";
     collisionCounter++;
+    collisionPerMinuteCounter++;
+    lvlSuccessCounter=0;
     restartGame();
     autoLevelCalculation(Game2Event::Collision);
 }
@@ -155,24 +165,22 @@ void Game2::updateLvl(){
     if (game) {
         game->setProperty("speed", lvl);
         qDebug() << "Новая скорость: " << lvl;
+        lvlSuccessCounter=0;
     }
 }
 
 void Game2::autoLevelCalculation(Game2Event event){
-    if(gameTimerCounter<1){
-        if(event == Game2Event::Success)
+    if(gameTimerCounter<1 && event == Game2Event::Success){
+        if(lvlSuccessCounter >= SUCCSESS_TO_NEXT_LVL){
             lvl++;
-
-        //if(event == Game2Event::Collision)
-            //lvl--;
-
-        updateLvl();
-        qDebug() << "Уровень повышен до " <<  lvl;
+            updateLvl();
+            qDebug() << "Уровень повышен до " <<  lvl;
+        }
     }
 
     if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = lvl*0.8;
+        lvl = lvl*PERCENT_OF_MAXIMUM_LEVEL;
         updateLvl();
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
@@ -199,6 +207,12 @@ void Game2::onTimeout(){
 
     if(gameTimerCounter > 1 && accuracyPerMinuteCounter < MIN_ACCURACY_PERCENT_PER_MINUTE)
         stopGame();
+
+    qDebug() << "successPerMinuteCounter" << successPerMinuteCounter;
+    qDebug() << "collisionPerMinuteCounter" << collisionPerMinuteCounter;
+
+    qDebug() << "accuracyPerMinuteCounter" << accuracyPerMinuteCounter;
+
 
     successPerMinuteCounter=0;
     collisionPerMinuteCounter=0;

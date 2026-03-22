@@ -34,7 +34,7 @@ private slots:
     void restartGame();
     void autoLevelCalculation(Game2Event event);
     void updateLvl();
-    void onSuccessCounter();
+    void onSuccess();
     void onCollision();
     void onTimeout();
     void updateDisplayedGameTime();
@@ -45,6 +45,7 @@ private:
     Ui::Game2 *ui;
 
     int lvl;
+    int lvlSuccessCounter;
     bool autoLvl;
 
     double accuracy;
