@@ -18,12 +18,6 @@
 Game2::Game2(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Game2)
-    , lvl(5)
-    , accuracy(0.)
-    , speed(0.)
-    , successCounter(0)
-    , collisionCounter(0)
-    , gameTimerCounter(0)
 {
     ui->setupUi(this);
 

@@ -4,7 +4,7 @@ import QtQml 2.12
 Item {
     signal onHit()
     signal onCollision()
-
+    signal levelCompleted()
     visible: true
     width: 981
     height: 641
@@ -13,7 +13,7 @@ Item {
     property int ballRadius: 20
     property double ballImpulse: 5         // импульс от клавиш
     property double ballTremor: 0         // дрожание шарика (диапазон отклонения в градусах)
-    property int lvl: 5                    // количество препятствий и целей
+    property int difficulty: 5                    // количество препятствий и целей
 
     property double friction: 0.98         // трение
     property bool gameActive: false
@@ -25,6 +25,59 @@ Item {
     // Модели данных
     ListModel { id: obstacleModel }
     ListModel { id: targetModel }
+
+    // Компонент для отображения временных сообщений
+    Rectangle {
+        id: tempMessageBox
+        anchors.centerIn: parent
+        color: "#88000000" // полупрозрачный черный
+        radius: 10
+        visible: false
+        z: 9999 // всегда поверх других элементов
+
+        property alias text: messageText.text
+
+        width: messageText.width + 40
+        height: messageText.height + 20
+
+        Text {
+            id: messageText
+            anchors.centerIn: parent
+            color: "white"
+            font.pixelSize: 18
+            font.bold: true
+            horizontalAlignment: Text.AlignHCenter
+            verticalAlignment: Text.AlignVCenter
+        }
+
+        Timer {
+            id: messageTimer
+            onTriggered: {
+                if (interval > 0) { // Не скрываем, если interval == 0
+                    tempMessageBox.visible = false
+                }
+            }
+        }
+    }
+
+    // Универсальная функция для отображения сообщений
+    function showTempMessage(message, duration = 2000) {
+        tempMessageBox.text = message
+        tempMessageBox.visible = true
+
+        if (duration > 0) {
+            messageTimer.interval = duration
+            messageTimer.start()
+        } else if (duration === 0) {
+            messageTimer.stop()
+        }
+    }
+
+    // Функция для скрытия сообщения (полезно для постоянных сообщений)
+    function hideTempMessage() {
+        tempMessageBox.visible = false
+        messageTimer.stop()
+    }
 
     // ----- Функции проверки столкновений -----
     function circleRectCollision(cx, cy, r, rect) {
@@ -143,175 +196,14 @@ Item {
         var newDy = Math.sin(newAngle) * length;
 
         return {dx: newDx, dy: newDy};
-    }
-
-    // ----- Функция полной перегенерации уровня -----
-    function regenerateLevel() {
-        // Центрируем шарик
-        var ballStartX = width / 2 - ballRadius;
-        var ballStartY = height / 2 - ballRadius;
-        var ballPos = {x: ballStartX, y: ballStartY};
-
-        var gameWidth = width;
-        var gameHeight = height;
-
-        // Очищаем модели
-        obstacleModel.clear();
-        targetModel.clear();
-
-        // Генерация новых препятствий
-        var tempObstacles = [];
-        var maxAttempts = 1000;
-
-        for (var i = 0; i < lvl; i++) {
-            var placed = false;
-
-            for (var attempts = 0; attempts < maxAttempts && !placed; attempts++) {
-                var size = getRandomObstacleSize();
-                var obsX = 30 + Math.random() * (gameWidth - size.width - 60);
-                var obsY = 30 + Math.random() * (gameHeight - size.height - 60);
-
-                if (isValidObstaclePosition(obsX, obsY, size.width, size.height, tempObstacles, ballPos, ballRadius, gameWidth, gameHeight)) {
-                    tempObstacles.push({x: obsX, y: obsY, width: size.width, height: size.height});
-                    placed = true;
-                }
-            }
-
-            // Если не удалось разместить, добавляем в случайное место с упрощенной проверкой
-            if (!placed) {
-                var fallbackPlaced = false;
-                for (var attempt2 = 0; attempt2 < 100 && !fallbackPlaced; attempt2++) {
-                    var fallbackX = 50 + Math.random() * (gameWidth - 150);
-                    var fallbackY = 50 + Math.random() * (gameHeight - 150);
-                    var fallbackSize = {width: 60, height: 50};
-
-                    // Упрощенная проверка: только не пересекаться с шариком
-                    if (!circleRectCollision(ballPos.x + ballRadius, ballPos.y + ballRadius, ballRadius * 2,
-                                           {x: fallbackX, y: fallbackY, width: fallbackSize.width, height: fallbackSize.height})) {
-
-                        // И не пересекаться с другими препятствиями
-                        var intersects = false;
-                        for (var k = 0; k < tempObstacles.length; k++) {
-                            if (rectRectCollision({x: fallbackX, y: fallbackY, width: fallbackSize.width, height: fallbackSize.height},
-                                                 {x: tempObstacles[k].x, y: tempObstacles[k].y,
-                                                  width: tempObstacles[k].width, height: tempObstacles[k].height})) {
-                                intersects = true;
-                                break;
-                            }
-                        }
-
-                        if (!intersects) {
-                            tempObstacles.push({x: fallbackX, y: fallbackY,
-                                               width: fallbackSize.width, height: fallbackSize.height});
-                            fallbackPlaced = true;
-                        }
-                    }
-                }
-
-                // Если всё еще не разместили, добавляем в любое место, где нет пересечения с шариком
-                if (!fallbackPlaced) {
-                    for (var y = 50; y < gameHeight - 100 && !fallbackPlaced; y += 60) {
-                        for (var x = 50; x < gameWidth - 100 && !fallbackPlaced; x += 70) {
-                            if (!circleRectCollision(ballPos.x + ballRadius, ballPos.y + ballRadius, ballRadius * 2,
-                                                   {x: x, y: y, width: 60, height: 50})) {
-                                tempObstacles.push({x: x, y: y, width: 60, height: 50});
-                                fallbackPlaced = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Добавляем все препятствия в модель
-        for (var n = 0; n < tempObstacles.length; n++) {
-            obstacleModel.append(tempObstacles[n]);
-        }
-
-        // Генерация новых целей
-        var tempTargets = [];
-
-        for (var j = 0; j < lvl; j++) {
-            var placedTarget = false;
-
-            for (var attemptsTarget = 0; attemptsTarget < maxAttempts && !placedTarget; attemptsTarget++) {
-                var tarX = 40 + Math.random() * (gameWidth - 80);
-                var tarY = 40 + Math.random() * (gameHeight - 80);
-                var tarRadius = 12 + Math.floor(Math.random() * 16);
-
-                if (isValidTargetPosition(tarX, tarY, tarRadius, tempTargets, ballPos, ballRadius, tempObstacles, gameWidth, gameHeight)) {
-                    tempTargets.push({x: tarX, y: tarY, radius: tarRadius});
-                    placedTarget = true;
-                }
-            }
-
-            // Если не удалось разместить, добавляем в случайное место с упрощенной проверкой
-            if (!placedTarget) {
-                var fallbackTargetPlaced = false;
-                for (var attempt3 = 0; attempt3 < 100 && !fallbackTargetPlaced; attempt3++) {
-                    var fallbackTarX = 60 + Math.random() * (gameWidth - 120);
-                    var fallbackTarY = 60 + Math.random() * (gameHeight - 120);
-                    var fallbackRadius = 15;
-
-                    // Проверяем только пересечение с шариком и с другими целями
-                    var dxBall = fallbackTarX - (ballPos.x + ballRadius);
-                    var dyBall = fallbackTarY - (ballPos.y + ballRadius);
-                    var distBall = Math.sqrt(dxBall*dxBall + dyBall*dyBall);
-
-                    if (distBall >= fallbackRadius + ballRadius + 50) {
-                        var intersects = false;
-                        for (var k3 = 0; k3 < tempTargets.length; k3++) {
-                            var dx = fallbackTarX - tempTargets[k3].x;
-                            var dy = fallbackTarY - tempTargets[k3].y;
-                            if (Math.sqrt(dx*dx + dy*dy) < fallbackRadius + tempTargets[k3].radius + 20) {
-                                intersects = true;
-                                break;
-                            }
-                        }
-
-                        if (!intersects) {
-                            tempTargets.push({x: fallbackTarX, y: fallbackTarY, radius: fallbackRadius});
-                            fallbackTargetPlaced = true;
-                        }
-                    }
-                }
-
-                // Если всё еще не разместили, добавляем в любое место, где нет пересечения с шариком
-                if (!fallbackTargetPlaced) {
-                    for (var y2 = 70; y2 < gameHeight - 70 && !fallbackTargetPlaced; y2 += 50) {
-                        for (var x2 = 70; x2 < gameWidth - 70 && !fallbackTargetPlaced; x2 += 50) {
-                            var dxBall2 = x2 - (ballPos.x + ballRadius);
-                            var dyBall2 = y2 - (ballPos.y + ballRadius);
-                            var distBall2 = Math.sqrt(dxBall2*dxBall2 + dyBall2*dyBall2);
-
-                            if (distBall2 >= 15 + ballRadius + 50) {
-                                tempTargets.push({x: x2, y: y2, radius: 15});
-                                fallbackTargetPlaced = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Добавляем все цели в модель
-        for (var m = 0; m < tempTargets.length; m++) {
-            targetModel.append(tempTargets[m]);
-        }
-
-        // Устанавливаем шарик в центр
-        ball.x = ballStartX;
-        ball.y = ballStartY;
-        vx = 0;
-        vy = 0;
-    }
+    }    
 
     // ----- Инициализация / сброс -----
-    function restartGame() {
+    function startGame(lvl) {
         obstacleModel.clear();
         targetModel.clear();
+
+        difficulty=lvl
 
         // Начальная позиция шарика (центр экрана)
         var ballStartX = width / 2 - ballRadius;
@@ -324,7 +216,7 @@ Item {
         var gameWidth = width;
         var gameHeight = height;
 
-        for (var i = 0; i < lvl; i++) {
+        for (var i = 0; i < difficulty; i++) {
             var placed = false;
 
             for (var attempts = 0; attempts < maxAttempts && !placed; attempts++) {
@@ -375,7 +267,7 @@ Item {
         // Генерация целей
         var tempTargets = [];
 
-        for (var j = 0; j < lvl; j++) {
+        for (var j = 0; j < difficulty; j++) {
             var placedTarget = false;
 
             for (var attemptsTarget = 0; attemptsTarget < maxAttempts && !placedTarget; attemptsTarget++) {
@@ -551,7 +443,8 @@ Item {
 
             // Если цели кончились – генерируем новый уровень (и цели, и препятствия) с шариком в центре
             if (targetModel.count === 0 && gameActive) {
-                regenerateLevel();
+                levelCompleted();
+                //regenerateLevel();
             }
         }
     }

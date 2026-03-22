@@ -8,6 +8,11 @@ namespace Ui {
 class Game3;
 }
 
+enum class Game3Event {
+    levelCompleted,
+    Collision
+};
+
 class Game3 : public QMainWindow
 {
     Q_OBJECT
@@ -25,33 +30,52 @@ private slots:
 
     void on_pushButtonStop_clicked();
 
-    void on_spinBoxBallImpulse_valueChanged(int arg1);
+    void initGame();
+    void startNewGame();
+    void startNewLvl();
+    void autoLevelCalculation(Game3Event event);
+    void levelCompleted();
+    void stopGame();
 
-    void on_spinBoxBallTremor_valueChanged(int arg1);
-
-    void on_spinBoxLvl_valueChanged(int arg1);
-
-    void restartGame();
     void onHit();
     void onCollision();
+    void setBallTremor();
+    void setBallImpulse();
+
+    void sendMessage(QString message, int sec=0);
+
     void onTimeout();
+    void updateDisplayedGameTime();
 
 private:
     Ui::Game3 *ui;
 
     double accuracy;
+    int accuracyPerMinuteCounter;
+
     double speed;
 
-    int hitCounter;
-    int collisionCounter;
+    int allHitCount;
+
+    int lvlVictoryPerMinuteCounter;
+    int lvlCollisionPerMinuteCounter;
+
+    int gameVictoryCounter;
+    int gameLossCounter;
 
     int ballTremor; // дрожание шарика
     int ballImpulse; // импульс шарика от клавиш
 
     int lvl;
+    int autoLvl;
 
     int gameTimerCounter;
     QTimer gameTimer;
+
+    QTimer displayedGameTimer;
+    qint64 startGameTime;
+
+    QObject *game;
 
     QString gameInfo = "Цель игры: определение \"человеческого фактора\", связь его с биоритмами\n"
                        "Инструкция: управляйте шариком, избегая препятствия и собирая цели по траектории";

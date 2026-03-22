@@ -1,21 +1,23 @@
 #include <QQuickItem>
 #include <QQmlEngine>
+#include <QDateTime>
 
 #include "game_3.h"
 #include "ui_game_3.h"
 #include "../../GUI/info_dialog/info_dialog.h"
 
+#define MAX_GAME_MINUTES  10
+
+#define MIN_LVL  5
+#define MAX_LVL  38
+#define SUCCSESS_TO_NEXT_LVL  0
+#define PERCENT_OF_MAXIMUM_LEVEL 0.8
+
+#define MIN_ACCURACY_PERCENT_PER_MINUTE 50
+
 Game3::Game3(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Game3)
-    , accuracy(0)
-    , speed(0)
-    , hitCounter(0)
-    , collisionCounter(0)
-    , ballTremor(0)
-    , ballImpulse(5)
-    , lvl(1)
-    , gameTimerCounter(0)
 {
     ui->setupUi(this);
 
@@ -30,16 +32,22 @@ Game3::Game3(QWidget *parent)
         qDebug() << "Ошибка загрузки QML";
     }
 
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
+    game = ui->quickWidgetGame->rootObject();
+
+    if (game) {
         // Подключаем сигналы из QML к слотам C++
-        connect(root, SIGNAL(onHit()), this, SLOT(onHit()));
-        connect(root, SIGNAL(onCollision()), this, SLOT(onCollision()));
+        connect(game, SIGNAL(onHit()), this, SLOT(onHit()));
+        connect(game, SIGNAL(onCollision()), this, SLOT(onCollision()));
+        connect(game, SIGNAL(levelCompleted()), this, SLOT(levelCompleted()));
     } else {
         qDebug() << "Не удалось получить корневой объект QML";
     }
 
     connect(&gameTimer, &QTimer::timeout, this, &Game3::onTimeout);
+    gameTimer.setInterval(60000);
+
+    connect(&displayedGameTimer, &QTimer::timeout, this, &Game3::updateDisplayedGameTime);
+    displayedGameTimer.setInterval(1000);
 
     ui->quickWidgetGame->setFocus();
 }
@@ -64,99 +72,169 @@ void Game3::on_pushButtonInfo_clicked()
 
 void Game3::on_pushButtonStart_clicked()
 {
-    gameTimerCounter = 0;
-    hitCounter = 0;
-    collisionCounter = 0;
-
-    gameTimer.start(60000);
-    restartGame();
+    startNewGame();
     ui->quickWidgetGame->setFocus();
 }
 
 void Game3::on_pushButtonStop_clicked()
 {
-    gameTimer.stop();
+    stopGame();
+}
 
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        bool success = QMetaObject::invokeMethod(root, "stopGame");
+void Game3::initGame(){
+    accuracy=0.;
+    accuracyPerMinuteCounter=0.;
+
+    speed=0.;
+
+    allHitCount=0;
+
+    lvlVictoryPerMinuteCounter=0.;
+    lvlCollisionPerMinuteCounter=0.;
+
+    gameVictoryCounter=0;
+    gameLossCounter=0;
+
+    ballTremor=0; // дрожание шарика
+    ballImpulse=0; // импульс шарика от клавиш
+
+    lvl=MIN_LVL;
+    autoLvl=true;
+
+    gameTimerCounter=0;
+
+    startGameTime =  QDateTime::currentMSecsSinceEpoch();
+
+    gameTimer.start();
+    displayedGameTimer.start();
+}
+
+void Game3::onHit(){
+    allHitCount++;
+    qDebug() << "Кол-во попаданий: " << allHitCount;
+}
+
+void Game3::onCollision(){
+    sendMessage("Столкновение", 1000);
+    gameLossCounter++;
+    lvlCollisionPerMinuteCounter++;
+    autoLevelCalculation(Game3Event::Collision);
+
+    qDebug() << "Кол-во неудачных игр: " << gameLossCounter;
+    startNewLvl();
+}
+
+void Game3::startNewGame(){
+    sendMessage("Старт игры", 1000);
+    initGame();
+    startNewLvl();
+}
+
+void Game3::startNewLvl(){
+    if(lvl>MAX_LVL)
+        lvl=MAX_LVL;
+
+    if(lvl<MIN_LVL)
+        lvl=MIN_LVL;
+
+    if (game) {
+        bool success = QMetaObject::invokeMethod(game, "startGame", Q_ARG(QVariant, lvl));
+        if (!success)
+            qDebug() << "Не удалось вызвать функцию startGame";
+    }
+}
+
+void Game3::autoLevelCalculation(Game3Event event){
+    if(gameTimerCounter<1 && event == Game3Event::levelCompleted){
+        lvl++;
+        qDebug() << "Уровень повышен до " <<  lvl;
+    }
+
+    if(autoLvl && gameTimerCounter==1){
+        autoLvl=false;
+        lvl = lvl*PERCENT_OF_MAXIMUM_LEVEL;
+        qDebug() << "Уровень " <<  lvl << " зафиксирован";
+    }
+}
+
+void Game3::levelCompleted(){
+    sendMessage("Уровень пройден", 1000);
+
+    gameVictoryCounter++;
+    lvlVictoryPerMinuteCounter++;
+    autoLevelCalculation(Game3Event::levelCompleted);
+    startNewLvl();
+}
+
+void Game3::stopGame(){
+    if((gameVictoryCounter+gameLossCounter!=0))
+        accuracy = ((double)gameVictoryCounter/(gameVictoryCounter+gameLossCounter))*100.;
+    else
+        accuracy = 0.;
+
+    speed = allHitCount/(60.*(gameTimerCounter+1));
+
+    sendMessage("Конец игры\nТочность " + QString::number(accuracy)+ " %\nСкорость " + QString::number(speed) + " объектов/сек");
+
+    gameTimer.stop();
+    displayedGameTimer.stop();
+    if (game) {
+        bool success = QMetaObject::invokeMethod(game, "stopGame");
         if (!success) {
             qDebug() << "Не удалось вызвать функцию stopGame";
         }
     }
 }
 
-void Game3::on_spinBoxBallImpulse_valueChanged(int arg1)
-{
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        ballImpulse=arg1;
-        root->setProperty("ballImpulse", ballImpulse); // импульс
-        qDebug() << "Новый импульс: " << ballImpulse;
-    }
-    ui->quickWidgetGame->setFocus();
-}
-
-void Game3::on_spinBoxBallTremor_valueChanged(int arg1)
-{
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        ballTremor=arg1;
-        root->setProperty("ballTremor", ballTremor); // угол дрожания
+void Game3::setBallTremor(){
+    if (game) {
+        game->setProperty("ballTremor", ballTremor); // угол дрожания
         qDebug() << "Угол дрожания: " << ballTremor;
     }
-    ui->quickWidgetGame->setFocus();
 }
-
-void Game3::on_spinBoxLvl_valueChanged(int arg1)
-{
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        lvl=arg1;
-        root->setProperty("lvl", lvl); // уровень
-        qDebug() << "Новый уровень: " << lvl;
+void Game3::setBallImpulse(){
+    if (game) {
+        game->setProperty("ballImpulse", ballImpulse); // импульс
+        qDebug() << "Новый импульс: " << ballImpulse;
     }
-    ui->quickWidgetGame->setFocus();
 }
 
-void Game3::onHit(){
-    hitCounter++;
-    qDebug() << "Кол-во попаданий: " << hitCounter;
-}
-
-void Game3::onCollision(){
-    collisionCounter++;
-    qDebug() << "Кол-во столкновений: " << collisionCounter;
-    restartGame();
-}
-
-void Game3::restartGame(){
-    QObject *root = ui->quickWidgetGame->rootObject();
-    if (root) {
-        bool success = QMetaObject::invokeMethod(root, "restartGame");
-        if (!success) {
-            qDebug() << "Не удалось вызвать функцию restartGame";
-        }
+void Game3::sendMessage(QString message, int sec){
+    if (game) {
+        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, sec) );
+        if (!success)
+            qDebug() << "Не удалось вызвать функцию showTempMessage";
     }
 }
 
 void Game3::onTimeout(){
-    gameTimerCounter++;
+    gameTimerCounter++;    
 
-    if (gameTimerCounter >= 5) {
-        on_pushButtonStop_clicked();
-        qDebug() << "Игра окончена";
-    }else{
-        if((hitCounter+collisionCounter!=0))
-            accuracy = ((double)hitCounter/(hitCounter+collisionCounter))*100.;
-        else
-            accuracy = 0.;
+    if (gameTimerCounter >= MAX_GAME_MINUTES)
+        stopGame();
 
-        speed = hitCounter/60.;
-        ui->labelAccuracy->setText("Точность: " + QString::number(accuracy) + "%");
-        ui->labelSpeed->setText("Попаданий/сек: " + QString::number(speed));
+    if((lvlVictoryPerMinuteCounter+lvlCollisionPerMinuteCounter!=0))
+        accuracyPerMinuteCounter = ((double)lvlVictoryPerMinuteCounter/(lvlVictoryPerMinuteCounter+lvlCollisionPerMinuteCounter))*100.;
+    else
+        accuracyPerMinuteCounter = 0.;
 
-        hitCounter=0;
-        collisionCounter=0;
-    }
+    if(gameTimerCounter > 1 && accuracyPerMinuteCounter < MIN_ACCURACY_PERCENT_PER_MINUTE)
+        stopGame();
+
+    lvlVictoryPerMinuteCounter=0;
+    lvlCollisionPerMinuteCounter=0;
 }
+
+
+void Game3::updateDisplayedGameTime(){
+    qint64 currentTime = QDateTime::currentMSecsSinceEpoch();
+    qint64 elapsedSeconds = (currentTime - startGameTime) / 1000;
+
+    int minutes = elapsedSeconds / 60;
+    int seconds = elapsedSeconds % 60;
+
+    ui->labelGameTimer->setText( QString("%1:%2")
+                                    .arg(minutes, 2, 10, QChar('0'))
+                                    .arg(seconds, 2, 10, QChar('0')));
+}
+
