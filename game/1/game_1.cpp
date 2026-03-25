@@ -6,6 +6,7 @@
 #include "game_1.h"
 #include "ui_game_1.h"
 #include "../../GUI/info_dialog/info_dialog.h"
+#include "../../app_setting.h"
 
 #define MAX_GAME_MINUTES  10
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
@@ -40,6 +41,9 @@ Game1::Game1(QWidget *parent)
 
     connect(&displayedGameTimer, &QTimer::timeout, this, &Game1::updateDisplayedGameTime);
     displayedGameTimer.setInterval(1000);
+
+    connect(&logTimer, &QTimer::timeout, this, &Game1::writeGameLog);
+    logTimer.setInterval(5000);
 }
 
 Game1::~Game1()
@@ -63,6 +67,7 @@ void Game1::on_pushButtonInfo_clicked()
 void Game1::on_pushButtonStart_clicked()
 {
     startNewGame();
+    startWriteGameLog();
 }
 
 void Game1::on_pushButtonStop_clicked()
@@ -74,10 +79,11 @@ void Game1::onHit(){
     allHitCount++;
 }
 
-void Game1::onMiss(){   
+void Game1::onMiss(){
     lvlLossPerMinuteCounter++;
     gameLossCounter++;
-
+    gameMaxVictorystreak=std::max(gameMaxVictorystreak, gameVictorystreak);
+    gameVictorystreak=0;
     autoLevelCalculation(Game1Event::Miss);
     startNewLvl();
 }
@@ -92,10 +98,12 @@ void Game1::initGame(){
     lvl=2;
     autoLvl=true;
     gameVictoryCounter=0;
+    gameVictorystreak=0;
+    gameMaxVictorystreak=0;
     gameLossCounter=0;
     gameTimerCounter=0;
     startGameTime =  QDateTime::currentMSecsSinceEpoch();
-
+    startWriteGameLog();
     gameTimer.start();
     displayedGameTimer.start();
 }
@@ -110,10 +118,10 @@ void Game1::startNewLvl(){
     }
 }
 
-void Game1::levelCompleted(){    
+void Game1::levelCompleted(){
     gameVictoryCounter++;
     lvlVictoryPerMinuteCounter++;
-
+    gameVictorystreak++;
     autoLevelCalculation(Game1Event::Hit);
     startNewLvl();
 }
@@ -154,6 +162,64 @@ void Game1::stopGame(){
         if (!success)
             qDebug() << "Не удалось вызвать функцию stopGame";
     }
+
+    stopWriteGameLog();
+}
+#include <QTextCodec>
+void Game1::startWriteGameLog(){
+    gameLogfile = new QFile(DIR_GAME_LOG + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+
+    if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        qDebug() << "Файл не создан";
+        delete gameLogfile;
+        gameLogfile = nullptr;
+        return;
+    }
+
+    gameLogStream = new QTextStream(gameLogfile);
+
+    writeGameLog();
+    logTimer.start();
+}
+
+
+/*Выход: показатели БОС, подсчет попаданий, время реакции, количество игр подряд, сложность.
+ * ЧСС (ЭКГ, ФПГ), показатели вариативности сердечного ритма (Mean RR, StDev RR, VSR общая мощность ритмов, HF, LF, VLF, ULF, индекс напряжения по Баевскому, все это на каждые 5 сек исследования),
+*ЭЭГ (мощность альфа ритма, бетта-ритма, % альфа и бетта ритмов, соотношение, все показатели на каждые 5 сек исследования)
+*/
+void Game1::writeGameLog(){
+    if (!gameLogStream)
+        return;
+
+    speed = allHitCount/(60.*(gameTimerCounter+1));
+
+    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
+                   << ",Mean RR,StDev RR,VSR,HF,LF,VLF,ULF,Baevsky's stress index,"
+                      "power of alpha rhythm, beta rhythm, % of alpha and beta rhythms, ratio,"
+                   << QString::number(allHitCount) << ","
+                   << QString::number(speed) << ","
+                   << QString::number(gameMaxVictorystreak) << ","
+                   << QString::number(lvl) << "\n";
+
+    gameLogStream->flush();
+}
+
+void Game1::stopWriteGameLog(){
+    if (logTimer.isActive())
+        logTimer.stop();
+
+    if (gameLogStream) {
+        gameLogStream->flush();
+        delete gameLogStream;
+        gameLogStream = nullptr;
+    }
+
+    if (gameLogfile) {
+        if (gameLogfile->isOpen())
+            gameLogfile->close();
+        delete gameLogfile;
+        gameLogfile = nullptr;
+    }
 }
 
 void Game1::sendMessage(QString message, int sec){
@@ -191,6 +257,6 @@ void Game1::updateDisplayedGameTime(){
     int seconds = elapsedSeconds % 60;
 
     ui->labelGameTimer->setText( QString("%1:%2")
-                       .arg(minutes, 2, 10, QChar('0'))
+                                    .arg(minutes, 2, 10, QChar('0'))
                                     .arg(seconds, 2, 10, QChar('0')));
 }

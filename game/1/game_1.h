@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QFile>
+#include <QTextStream>
 
 namespace Ui {
 class Game1;
@@ -31,16 +33,22 @@ private slots:
     void on_pushButtonStop_clicked();
 
     void initGame();
-    void startNewLvl();
     void onHit();
     void onMiss();
     void levelCompleted();
     void autoLevelCalculation(Game1Event event);
+
     void startNewGame();
+    void startNewLvl();
     void stopGame();
+
+    void startWriteGameLog();
+    void writeGameLog();
+    void stopWriteGameLog();
+
     void onTimeout();
-    void sendMessage(QString message, int sec=0);
     void updateDisplayedGameTime();
+    void sendMessage(QString message, int sec=0);
 private:
     Ui::Game1 *ui;
 
@@ -57,6 +65,8 @@ private:
     bool autoLvl;
 
     int gameVictoryCounter;
+    int gameVictorystreak;
+    int gameMaxVictorystreak;
     int gameLossCounter;
 
     QTimer gameTimer;
@@ -65,7 +75,13 @@ private:
     QTimer displayedGameTimer;
     qint64 startGameTime;
 
+    QTimer logTimer;
+
     QObject* game;
+
+    QFile* gameLogfile=nullptr;
+    QTextStream* gameLogStream=nullptr;
+
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
                        "Инструкция: на экране появляется серия разноцветных мишеней разной формы и размера."
                        "Необходимо как можно быстрее кликнуть мышью в зонах появления мишени";

@@ -4,6 +4,7 @@
 #include <QString>
 
 #define PATH_SETTING_APP "setting_app.json"
+#define DIR_GAME_LOG "game_log/"
 
 class AppSetting{
 public:
