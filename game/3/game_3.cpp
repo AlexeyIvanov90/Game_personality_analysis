@@ -5,15 +5,24 @@
 #include "game_3.h"
 #include "ui_game_3.h"
 #include "../../GUI/info_dialog/info_dialog.h"
+#include "../../app_setting.h"
+#include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
 
 #define MAX_GAME_MINUTES  10
+#define WINDOW_SIZE  10
 
-#define MIN_LVL  5
+#define MIN_LVL  1
 #define MAX_LVL  38
+
+#define MAX_BALL_TREMOR 60
+#define MAX_BALL_SPEED 10
+
 #define SUCCSESS_TO_NEXT_LVL  0
-#define PERCENT_OF_MAXIMUM_LEVEL 0.8
+#define LEVEL_CORRECTION 0.8
 
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
+#define STATE_BOUNDARY 200
+#define THRESHOLD_VARIABILITI_EEG 0.5
 
 Game3::Game3(QWidget *parent)
     : QMainWindow(parent)
@@ -49,6 +58,9 @@ Game3::Game3(QWidget *parent)
     connect(&displayedGameTimer, &QTimer::timeout, this, &Game3::updateDisplayedGameTime);
     displayedGameTimer.setInterval(1000);
 
+    connect(&logTimer, &QTimer::timeout, this, &Game3::writeGameLog);
+    logTimer.setInterval(5000);
+
     ui->quickWidgetGame->setFocus();
 }
 
@@ -82,6 +94,7 @@ void Game3::on_pushButtonStop_clicked()
 }
 
 void Game3::initGame(){
+    gameRun=true;
     accuracy=0.;
     accuracyPerMinuteCounter=0.;
 
@@ -93,6 +106,8 @@ void Game3::initGame(){
     lvlCollisionPerMinuteCounter=0.;
 
     gameVictoryCounter=0;
+    gameVictorystreak=0;
+    gameMaxVictoryStreak=0;
     gameLossCounter=0;
 
     ballTremor=0; // дрожание шарика
@@ -116,6 +131,8 @@ void Game3::onHit(){
 
 void Game3::onCollision(){
     sendMessage("Столкновение", 1000);
+    gameMaxVictoryStreak=std::max(gameMaxVictoryStreak, gameVictorystreak);
+    gameVictorystreak=0;
     gameLossCounter++;
     lvlCollisionPerMinuteCounter++;
     autoLevelCalculation(Game3Event::Collision);
@@ -125,9 +142,14 @@ void Game3::onCollision(){
 }
 
 void Game3::startNewGame(){
+    if(gameRun)
+        return;
+
     sendMessage("Старт игры", 1000);
     initGame();
     startNewLvl();
+    startWriteGameLog();
+
 }
 
 void Game3::startNewLvl(){
@@ -152,14 +174,14 @@ void Game3::autoLevelCalculation(Game3Event event){
 
     if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = lvl*PERCENT_OF_MAXIMUM_LEVEL;
+        lvl = lvl*LEVEL_CORRECTION;
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
 }
 
 void Game3::levelCompleted(){
     sendMessage("Уровень пройден", 1000);
-
+    gameVictorystreak++;
     gameVictoryCounter++;
     lvlVictoryPerMinuteCounter++;
     autoLevelCalculation(Game3Event::levelCompleted);
@@ -167,6 +189,8 @@ void Game3::levelCompleted(){
 }
 
 void Game3::stopGame(){
+    stopWriteGameLog();
+
     if((gameVictoryCounter+gameLossCounter!=0))
         accuracy = ((double)gameVictoryCounter/(gameVictoryCounter+gameLossCounter))*100.;
     else
@@ -184,6 +208,8 @@ void Game3::stopGame(){
             qDebug() << "Не удалось вызвать функцию stopGame";
         }
     }
+
+    gameRun=false;
 }
 
 void Game3::setBallTremor(){
@@ -192,6 +218,7 @@ void Game3::setBallTremor(){
         qDebug() << "Угол дрожания: " << ballTremor;
     }
 }
+
 void Game3::setBallSpeed(){
     if (game) {
         game->setProperty("ballSpeed", ballSpeed); // скорость
@@ -238,3 +265,133 @@ void Game3::updateDisplayedGameTime(){
                                     .arg(seconds, 2, 10, QChar('0')));
 }
 
+void Game3::startWriteGameLog(){
+    gameLogfile = new QFile(DIR_GAME_LOG "game3_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+
+    if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        qDebug() << "Файл не создан";
+        delete gameLogfile;
+        gameLogfile = nullptr;
+        return;
+    }
+
+    gameLogStream = new QTextStream(gameLogfile);
+
+    writeHeader();
+    logTimer.start();
+}
+
+/*Выход: показатели БОС, подсчет попаданий, время реакции, количество игр подряд, сложность.
+ * ЧСС (ЭКГ, ФПГ), показатели вариативности сердечного ритма (Mean RR, StDev RR, VSR общая мощность ритмов, HF, LF, VLF, ULF, индекс напряжения по Баевскому, все это на каждые 5 сек исследования),
+*ЭЭГ (мощность альфа ритма, бетта-ритма, % альфа и бетта ритмов, соотношение, все показатели на каждые 5 сек исследования)
+*/
+
+void Game3::writeHeader(){
+    if (!gameLogStream)
+        return;
+
+    *gameLogStream << "\"Time\","
+                      "\"Mean RR\","
+                      "\"StDev RR\","
+                      "\"VSR\","
+                      "\"HF\","
+                      "\"LF\","
+                      "\"VLF\","
+                      "\"ULF\","
+                      "\"Stress index\","
+                      "\"power of alpha rhythm\","
+                      "\"power of beta rhythm\","
+                      "\"% of alpha rhythms\","
+                      "\"% of beta rhythms\","
+                      "\"Ratio\","
+                      "\"Hit count\","
+                      "\"Reaction time\","
+                      "\"Number of games in a row\","
+                      "\"Difficulty\"\n";
+
+    gameLogStream->flush();
+}
+
+bool Game3::isLowVariability(resultEEG newEEG){
+    previousEEG.push_back(newEEG);
+    if (previousEEG.size() > WINDOW_SIZE) {
+        previousEEG.erase(previousEEG.begin());
+    }
+
+    if (previousEEG.size() < WINDOW_SIZE)
+        return false;
+
+    double minVal = previousEEG[0].ratio;
+    double maxVal = previousEEG[0].ratio;
+
+    for (int i=0;i<previousEEG.size();i++) {
+        if (previousEEG.at(i).ratio < minVal) minVal = previousEEG.at(i).ratio;
+        if (previousEEG.at(i).ratio > maxVal) maxVal = previousEEG.at(i).ratio;
+    }
+
+    double range = maxVal - minVal;
+    return range < THRESHOLD_VARIABILITI_EEG;
+}
+
+void Game3::writeGameLog(){
+    if (!gameLogStream)
+        return;
+
+    speed = allHitCount/(60.*(gameTimerCounter+1));
+
+    resultHeartRateVariability heartRateVariability;
+    resultEEG EEG;
+
+    if(heartRateVariability.SI>STATE_BOUNDARY)
+        ballTremor++;
+    else
+        ballTremor--;
+    setBallTremor();
+
+    if(isLowVariability(EEG))
+        ballSpeed++;
+    else
+        ballSpeed--;
+    setBallSpeed();
+
+    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
+                   << QString::number(heartRateVariability.M) << ","
+                   << QString::number(heartRateVariability.SDNN) << ","
+                   << QString::number(heartRateVariability.TP) << ","
+                   << QString::number(heartRateVariability.HF) << ","
+                   << QString::number(heartRateVariability.LF) << ","
+                   << QString::number(heartRateVariability.VLF) << ","
+                   << QString::number(heartRateVariability.ULF) << ","
+                   << QString::number(heartRateVariability.SI) << ","
+
+                   << QString::number(EEG.powerAlphaRhythm) << ","
+                   << QString::number(EEG.powerBetaRhythm) << ","
+                   << QString::number(EEG.alphaRhythms_percent) << ","
+                   << QString::number(EEG.betaRhythms_percent) << ","
+                   << QString::number(EEG.ratio) << ","
+
+                   << QString::number(allHitCount) << ","
+                   << QString::number(speed) << ","
+                   << QString::number(gameMaxVictoryStreak) << ","
+                   << QString::number(lvl) << "\n";
+
+    gameLogStream->flush();
+}
+
+void Game3::stopWriteGameLog(){
+    if (logTimer.isActive())
+        logTimer.stop();
+
+    if (gameLogStream) {
+        gameLogStream->flush();
+        delete gameLogStream;
+        gameLogStream = nullptr;
+    }
+
+    if (gameLogfile) {
+        if (gameLogfile->isOpen())
+            gameLogfile->close();
+        delete gameLogfile;
+        gameLogfile = nullptr;
+    }
+}

@@ -3,6 +3,10 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QFile>
+#include <QTextStream>
+
+#include "../../bio_signal/analysis/EEG/eeg.h"
 
 namespace Ui {
 class Game3;
@@ -39,6 +43,7 @@ private slots:
 
     void onHit();
     void onCollision();
+
     void setBallTremor();
     void setBallSpeed();
 
@@ -47,6 +52,11 @@ private slots:
     void onTimeout();
     void updateDisplayedGameTime();
 
+    void startWriteGameLog();
+    void writeHeader();
+    void writeGameLog();
+    void stopWriteGameLog();
+    bool isLowVariability(resultEEG newEEG);
 private:
     Ui::Game3 *ui;
 
@@ -61,7 +71,10 @@ private:
     int lvlCollisionPerMinuteCounter;
 
     int gameVictoryCounter;
+    int gameVictorystreak;
+    int gameMaxVictoryStreak;
     int gameLossCounter;
+    bool gameRun=false;
 
     int ballTremor; // дрожание шарика
     int ballSpeed; // импульс шарика от клавиш
@@ -76,6 +89,11 @@ private:
     qint64 startGameTime;
 
     QObject *game;
+
+    QTimer logTimer;
+    QFile* gameLogfile=nullptr;
+    QTextStream* gameLogStream=nullptr;
+    QVector<resultEEG> previousEEG;
 
     QString gameInfo = "Цель игры: определение \"человеческого фактора\", связь его с биоритмами\n"
                        "Инструкция: управляйте шариком, избегая препятствия и собирая цели по траектории";

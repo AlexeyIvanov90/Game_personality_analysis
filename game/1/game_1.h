@@ -43,6 +43,7 @@ private slots:
     void stopGame();
 
     void startWriteGameLog();
+    void writeHeader();
     void writeGameLog();
     void stopWriteGameLog();
 
@@ -63,10 +64,11 @@ private:
 
     int lvl;
     bool autoLvl;
+    bool gameRun=false;
 
     int gameVictoryCounter;
     int gameVictorystreak;
-    int gameMaxVictorystreak;
+    int gameMaxVictoryStreak;
     int gameLossCounter;
 
     QTimer gameTimer;

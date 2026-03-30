@@ -5,13 +5,16 @@
 #include "game_2.h"
 #include "ui_game_2.h"
 #include "../../GUI/info_dialog/info_dialog.h"
+#include "../../app_setting.h"
+#include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
+#include "../../bio_signal/analysis/EEG/eeg.h"
 
 #define MAX_GAME_MINUTES  10
 
 #define MIN_LVL  5
 #define MAX_LVL  38
 #define SUCCSESS_TO_NEXT_LVL  0
-#define PERCENT_OF_MAXIMUM_LEVEL 0.8
+#define LEVEL_CORRECTION 0.8
 
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 
@@ -47,6 +50,9 @@ Game2::Game2(QWidget *parent)
     connect(&displayedGameTimer, &QTimer::timeout, this, &Game2::updateDisplayedGameTime);
     displayedGameTimer.setInterval(1000);
 
+    connect(&logTimer, &QTimer::timeout, this, &Game2::writeGameLog);
+    logTimer.setInterval(5000);
+
     ui->quickWidgetGame->setFocus();
 }
 
@@ -69,9 +75,7 @@ void Game2::on_pushButtonInfo_clicked()
 
 void Game2::on_pushButtonStart_clicked()
 {
-    sendMessage("Старт игры", 1000);
-    initGame();
-    restartGame();
+    startNewGame();
     ui->quickWidgetGame->setFocus();
 }
 
@@ -81,6 +85,7 @@ void Game2::on_pushButtonStop_clicked()
 }
 
 void Game2::initGame(){
+    gameRun=true;
     successCounter = 0;
     successPerMinuteCounter = 0;
 
@@ -89,6 +94,9 @@ void Game2::initGame(){
 
     accuracy=0.;
     accuracyPerMinuteCounter = 0.;
+
+    gameVictorystreak=0;
+    gameMaxVictoryStreak=0;
 
     speed=0.;
 
@@ -103,6 +111,16 @@ void Game2::initGame(){
     displayedGameTimer.start();
 }
 
+void Game2::startNewGame(){
+    if(gameRun)
+        return;
+
+    sendMessage("Старт игры", 1000);
+    initGame();
+    restartGame();
+    startWriteGameLog();
+}
+
 void Game2::restartGame(){
     if (game) {
         bool success = QMetaObject::invokeMethod(game, "resetGame");
@@ -113,6 +131,8 @@ void Game2::restartGame(){
 }
 
 void Game2::stopGame(){
+    stopWriteGameLog();
+
     if((successCounter+collisionCounter!=0))
         accuracy = ((double)successCounter/(successCounter+collisionCounter))*100.;
     else
@@ -129,10 +149,12 @@ void Game2::stopGame(){
         if (!success)
             qDebug() << "Не удалось вызвать функцию stopGame";
     }
+    gameRun=false;
 }
 
 void Game2::onSuccess(){
     qDebug() << "onSuccess";
+    gameVictorystreak++;
     successCounter++;
     successPerMinuteCounter++;
     lvlSuccessCounter++;
@@ -141,6 +163,8 @@ void Game2::onSuccess(){
 
 void Game2::onCollision(){
     qDebug() << "onCollision";
+    gameMaxVictoryStreak=std::max(gameMaxVictoryStreak, gameVictorystreak);
+    gameVictorystreak=0;
     collisionCounter++;
     collisionPerMinuteCounter++;
     lvlSuccessCounter=0;
@@ -174,7 +198,7 @@ void Game2::autoLevelCalculation(Game2Event event){
 
     if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = lvl*PERCENT_OF_MAXIMUM_LEVEL;
+        lvl = lvl*LEVEL_CORRECTION;
         updateLvl();
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
@@ -224,3 +248,100 @@ void Game2::updateDisplayedGameTime(){
                                     .arg(seconds, 2, 10, QChar('0')));
 }
 
+void Game2::startWriteGameLog(){
+    gameLogfile = new QFile(DIR_GAME_LOG "game2_" +  QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+
+    if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
+        qDebug() << "Файл не создан";
+        delete gameLogfile;
+        gameLogfile = nullptr;
+        return;
+    }
+
+    gameLogStream = new QTextStream(gameLogfile);
+
+    writeHeader();
+    logTimer.start();
+}
+
+/*Выход: показатели БОС, подсчет попаданий, время реакции, количество игр подряд, сложность.
+ * ЧСС (ЭКГ, ФПГ), показатели вариативности сердечного ритма (Mean RR, StDev RR, VSR общая мощность ритмов, HF, LF, VLF, ULF, индекс напряжения по Баевскому, все это на каждые 5 сек исследования),
+*ЭЭГ (мощность альфа ритма, бетта-ритма, % альфа и бетта ритмов, соотношение, все показатели на каждые 5 сек исследования)
+*/
+
+void Game2::writeHeader(){
+    if (!gameLogStream)
+        return;
+
+    *gameLogStream << "\"Time\","
+                      "\"Mean RR\","
+                      "\"StDev RR\","
+                      "\"VSR\","
+                      "\"HF\","
+                      "\"LF\","
+                      "\"VLF\","
+                      "\"ULF\","
+                      "\"Stress index\","
+                      "\"power of alpha rhythm\","
+                      "\"power of beta rhythm\","
+                      "\"% of alpha rhythms\","
+                      "\"% of beta rhythms\","
+                      "\"Ratio\","
+                      "\"Hit count\","
+                      "\"Reaction time\","
+                      "\"Number of games in a row\","
+                      "\"Difficulty\"\n";
+
+    gameLogStream->flush();
+}
+
+void Game2::writeGameLog(){
+    if (!gameLogStream)
+        return;
+
+    speed = successCounter/(60.*(gameTimerCounter+1));
+
+    resultHeartRateVariability heartRateVariability;
+    resultEEG EEG;
+
+    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
+                   << QString::number(heartRateVariability.M) << ","
+                   << QString::number(heartRateVariability.SDNN) << ","
+                   << QString::number(heartRateVariability.TP) << ","
+                   << QString::number(heartRateVariability.HF) << ","
+                   << QString::number(heartRateVariability.LF) << ","
+                   << QString::number(heartRateVariability.VLF) << ","
+                   << QString::number(heartRateVariability.ULF) << ","
+                   << QString::number(heartRateVariability.SI) << ","
+
+                   << QString::number(EEG.powerAlphaRhythm) << ","
+                   << QString::number(EEG.powerBetaRhythm) << ","
+                   << QString::number(EEG.alphaRhythms_percent) << ","
+                   << QString::number(EEG.betaRhythms_percent) << ","
+                   << QString::number(EEG.ratio) << ","
+
+                   << QString::number(successCounter) << ","
+                   << QString::number(speed) << ","
+                   << QString::number(gameMaxVictoryStreak) << ","
+                   << QString::number(lvl) << "\n";
+
+    gameLogStream->flush();
+}
+
+void Game2::stopWriteGameLog(){
+    if (logTimer.isActive())
+        logTimer.stop();
+
+    if (gameLogStream) {
+        gameLogStream->flush();
+        delete gameLogStream;
+        gameLogStream = nullptr;
+    }
+
+    if (gameLogfile) {
+        if (gameLogfile->isOpen())
+            gameLogfile->close();
+        delete gameLogfile;
+        gameLogfile = nullptr;
+    }
+}

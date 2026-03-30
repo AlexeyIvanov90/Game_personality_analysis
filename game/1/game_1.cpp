@@ -7,9 +7,13 @@
 #include "ui_game_1.h"
 #include "../../GUI/info_dialog/info_dialog.h"
 #include "../../app_setting.h"
+#include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
+#include "../../bio_signal/analysis/EEG/eeg.h"
 
 #define MAX_GAME_MINUTES  10
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
+#define START_LVL 3
+#define LEVEL_CORRECTION  0.8
 
 Game1::Game1(QWidget *parent)
     : QMainWindow(parent)
@@ -82,28 +86,28 @@ void Game1::onHit(){
 void Game1::onMiss(){
     lvlLossPerMinuteCounter++;
     gameLossCounter++;
-    gameMaxVictorystreak=std::max(gameMaxVictorystreak, gameVictorystreak);
+    gameMaxVictoryStreak=std::max(gameMaxVictoryStreak, gameVictorystreak);
     gameVictorystreak=0;
     autoLevelCalculation(Game1Event::Miss);
     startNewLvl();
 }
 
 void Game1::initGame(){
+    gameRun=true;
     lvlVictoryPerMinuteCounter=0;
     allHitCount=0;
     lvlLossPerMinuteCounter=0;
     accuracy=0.;
     accuracyPerMinuteCounter=0.;
     speed=0.;
-    lvl=2;
+    lvl=START_LVL;
     autoLvl=true;
     gameVictoryCounter=0;
     gameVictorystreak=0;
-    gameMaxVictorystreak=0;
+    gameMaxVictoryStreak=0;
     gameLossCounter=0;
     gameTimerCounter=0;
     startGameTime =  QDateTime::currentMSecsSinceEpoch();
-    startWriteGameLog();
     gameTimer.start();
     displayedGameTimer.start();
 }
@@ -134,12 +138,15 @@ void Game1::autoLevelCalculation(Game1Event event){
 
     if(autoLvl && gameTimerCounter==1){
         autoLvl=false;
-        lvl = lvl*0.8;
+        lvl = lvl*LEVEL_CORRECTION;
         qDebug() << "Уровень " <<  lvl << " зафиксирован";
     }
 }
 
 void Game1::startNewGame(){
+    if(gameRun)
+        return;
+
     sendMessage("Старт игры", 1000);
     initGame();
     startNewLvl();
@@ -164,10 +171,11 @@ void Game1::stopGame(){
     }
 
     stopWriteGameLog();
+    gameRun=false;
 }
-#include <QTextCodec>
+
 void Game1::startWriteGameLog(){
-    gameLogfile = new QFile(DIR_GAME_LOG + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+    gameLogfile = new QFile(DIR_GAME_LOG "game1_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         qDebug() << "Файл не создан";
@@ -178,27 +186,70 @@ void Game1::startWriteGameLog(){
 
     gameLogStream = new QTextStream(gameLogfile);
 
-    writeGameLog();
+    writeHeader();
     logTimer.start();
 }
-
 
 /*Выход: показатели БОС, подсчет попаданий, время реакции, количество игр подряд, сложность.
  * ЧСС (ЭКГ, ФПГ), показатели вариативности сердечного ритма (Mean RR, StDev RR, VSR общая мощность ритмов, HF, LF, VLF, ULF, индекс напряжения по Баевскому, все это на каждые 5 сек исследования),
 *ЭЭГ (мощность альфа ритма, бетта-ритма, % альфа и бетта ритмов, соотношение, все показатели на каждые 5 сек исследования)
 */
+
+void Game1::writeHeader(){
+    if (!gameLogStream)
+        return;
+
+    *gameLogStream << "\"Time\","
+                      "\"Mean RR\","
+                      "\"StDev RR\","
+                      "\"VSR\","
+                      "\"HF\","
+                      "\"LF\","
+                      "\"VLF\","
+                      "\"ULF\","
+                      "\"Stress index\","
+                      "\"power of alpha rhythm\","
+                      "\"power of beta rhythm\","
+                      "\"% of alpha rhythms\","
+                      "\"% of beta rhythms\","
+                      "\"Ratio\","
+                      "\"Hit count\","
+                      "\"Reaction time\","
+                      "\"Number of games in a row\","
+                      "\"Difficulty\"\n";
+
+    gameLogStream->flush();
+}
+
+
 void Game1::writeGameLog(){
     if (!gameLogStream)
         return;
 
     speed = allHitCount/(60.*(gameTimerCounter+1));
 
+    resultHeartRateVariability heartRateVariability;
+    resultEEG EEG;
+
     *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
-                   << ",Mean RR,StDev RR,VSR,HF,LF,VLF,ULF,Baevsky's stress index,"
-                      "power of alpha rhythm, beta rhythm, % of alpha and beta rhythms, ratio,"
+                   << QString::number(heartRateVariability.M) << ","
+                   << QString::number(heartRateVariability.SDNN) << ","
+                   << QString::number(heartRateVariability.TP) << ","
+                   << QString::number(heartRateVariability.HF) << ","
+                   << QString::number(heartRateVariability.LF) << ","
+                   << QString::number(heartRateVariability.VLF) << ","
+                   << QString::number(heartRateVariability.ULF) << ","
+                   << QString::number(heartRateVariability.SI) << ","
+
+                   << QString::number(EEG.powerAlphaRhythm) << ","
+                   << QString::number(EEG.powerBetaRhythm) << ","
+                   << QString::number(EEG.alphaRhythms_percent) << ","
+                   << QString::number(EEG.betaRhythms_percent) << ","
+                   << QString::number(EEG.ratio) << ","
+
                    << QString::number(allHitCount) << ","
                    << QString::number(speed) << ","
-                   << QString::number(gameMaxVictorystreak) << ","
+                   << QString::number(gameMaxVictoryStreak) << ","
                    << QString::number(lvl) << "\n";
 
     gameLogStream->flush();

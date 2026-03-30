@@ -56,6 +56,11 @@ else()
             game/3/game_3.h game/3/game_3.cpp game/3/game_3.ui
             version.h
             GUI/info_dialog/info_dialog.h GUI/info_dialog/info_dialog.cpp GUI/info_dialog/info_dialog.ui
+            bio_signal/analysis/heart_rate_variability/heart_rate_variability.cpp bio_signal/analysis/heart_rate_variability/heart_rate_variability.h
+            bio_signal/analysis/EEG/eeg.h
+            bio_signal/analysis/EEG/eeg.cpp
+            bio_signal/openBCI/openBCI_manager.h
+            bio_signal/openBCI/openBCI_manager.cpp
         )
     endif()
 

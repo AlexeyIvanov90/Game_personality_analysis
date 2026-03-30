@@ -1,0 +1,4 @@
+#ifndef OPENBCI_CONNECT_H
+#define OPENBCI_CONNECT_H
+
+#endif // OPENBCI_CONNECT_H

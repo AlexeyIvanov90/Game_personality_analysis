@@ -3,6 +3,8 @@
 
 #include <QMainWindow>
 #include <QTimer>
+#include <QFile>
+#include <QTextStream>
 
 namespace Ui {
 class Game2;
@@ -31,6 +33,7 @@ private slots:
     void on_pushButtonStop_clicked();
 
     void initGame();
+    void startNewGame();
     void restartGame();
     void autoLevelCalculation(Game2Event event);
     void updateLvl();
@@ -41,6 +44,11 @@ private slots:
     void sendMessage(QString message, int sec=0);
     void stopGame();
 
+    void startWriteGameLog();
+    void writeHeader();
+    void writeGameLog();
+    void stopWriteGameLog();
+
 private:
     Ui::Game2 *ui;
 
@@ -50,8 +58,11 @@ private:
 
     double accuracy;
     double speed;
+    bool gameRun=false;
 
     int successCounter;
+    int gameVictorystreak;
+    int gameMaxVictoryStreak;
     int collisionCounter;
 
     int successPerMinuteCounter;
@@ -65,6 +76,10 @@ private:
     qint64 startGameTime;
 
     QObject* game;
+
+    QTimer logTimer;
+    QFile* gameLogfile=nullptr;
+    QTextStream* gameLogStream=nullptr;
 
     QString gameInfo = "Цель игры: моделирование различных функциональных состояний, "
                        "определение уровня работоспобности в смоделированных функциональных состояниях\n"
