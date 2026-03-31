@@ -26,6 +26,8 @@ private slots:
 
     void on_pushButtonGame3_clicked();
 
+    void on_pushButtonSetSettingOpenBci_clicked();
+
 private:
     Ui::MainWindow *ui;
 };

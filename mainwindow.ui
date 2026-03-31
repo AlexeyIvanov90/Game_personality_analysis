@@ -66,6 +66,19 @@
      <string>Закрыть</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="pushButtonSetSettingOpenBci">
+    <property name="geometry">
+     <rect>
+      <x>780</x>
+      <y>20</y>
+      <width>221</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Настройка OpenBCI</string>
+    </property>
+   </widget>
   </widget>
  </widget>
  <resources/>

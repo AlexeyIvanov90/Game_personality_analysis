@@ -2,6 +2,41 @@
 <!DOCTYPE TS>
 <TS version="2.1" language="ru_RU">
 <context>
+    <name>DialogOpenBciSetting</name>
+    <message>
+        <source>Dialog</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Закрыть</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Сохранить</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>COM-port</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Канал ЭКГ</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Настройки</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Канал ЭЭГ 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Канал ЭЭГ 2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Game1</name>
     <message>
         <source>Определение уровня ПВК </source>
@@ -89,6 +124,10 @@
     </message>
     <message>
         <source>Закрыть</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Настройка OpenBCI</source>
         <translation type="unfinished"></translation>
     </message>
 </context>

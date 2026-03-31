@@ -15,7 +15,7 @@ if(WIN32)
 endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Quick QuickWidgets)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Quick QuickWidgets SerialPort)
 
 set(TS_FILES Game_personality_analysis_ru_RU.ts)
 
@@ -61,6 +61,8 @@ else()
             bio_signal/analysis/EEG/eeg.cpp
             bio_signal/openBCI/openBCI_manager.h
             bio_signal/openBCI/openBCI_manager.cpp
+            bio_signal/openBCI/open_bci_setting.h bio_signal/openBCI/open_bci_setting.cpp bio_signal/openBCI/open_bci_setting.ui
+
         )
     endif()
 
@@ -69,10 +71,10 @@ endif()
 
 # Генерация version.h через generate_version.bat
 add_custom_command(
-    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/version.h
+    OUTPUT ${CMAKE_SOURCE_DIR}/version.h
     COMMAND cmd /c ${CMAKE_SOURCE_DIR}/generate_version.bat
     DEPENDS ${CMAKE_SOURCE_DIR}/generate_version.bat
-    WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+    WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     COMMENT "Generating version.h from git info"
 )
 
@@ -80,7 +82,8 @@ target_include_directories(Game_personality_analysis PRIVATE ${CMAKE_CURRENT_SOU
 target_link_libraries(Game_personality_analysis PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
     Qt${QT_VERSION_MAJOR}::Quick
-    Qt${QT_VERSION_MAJOR}::QuickWidgets)
+    Qt${QT_VERSION_MAJOR}::QuickWidgets
+    Qt${QT_VERSION_MAJOR}::SerialPort)
 
 # Qt for iOS sets MACOSX_BUNDLE_GUI_IDENTIFIER automatically since Qt 6.1.
 # If you are developing for iOS or macOS you should consider setting an

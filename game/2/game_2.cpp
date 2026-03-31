@@ -1,6 +1,8 @@
 #include <QQuickItem>
 #include <QQmlEngine>
 #include <QDateTime>
+#include <QDir>
+#include <QLibraryInfo>
 
 #include "game_2.h"
 #include "ui_game_2.h"
@@ -8,6 +10,7 @@
 #include "../../app_setting.h"
 #include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
 #include "../../bio_signal/analysis/EEG/eeg.h"
+#include "../../bio_signal/openBCI/openBCI_manager.h"
 
 #define MAX_GAME_MINUTES  10
 
@@ -17,6 +20,17 @@
 #define LEVEL_CORRECTION 0.8
 
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
+
+namespace {
+OpenBCIManager& openBci()
+{
+    static OpenBCIManager mgr;
+    return mgr;
+}
+constexpr int kSampleRateHz = 250;
+constexpr int kLogWindowSec = 5;
+constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
+}
 
 Game2::Game2(QWidget *parent)
     : QMainWindow(parent)
@@ -116,6 +130,7 @@ void Game2::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
+    openBci().start();
     initGame();
     restartGame();
     startWriteGameLog();
@@ -150,6 +165,7 @@ void Game2::stopGame(){
             qDebug() << "Не удалось вызвать функцию stopGame";
     }
     gameRun=false;
+    openBci().stop();
 }
 
 void Game2::onSuccess(){
@@ -249,6 +265,7 @@ void Game2::updateDisplayedGameTime(){
 }
 
 void Game2::startWriteGameLog(){
+    QDir().mkpath(DIR_GAME_LOG);
     gameLogfile = new QFile(DIR_GAME_LOG "game2_" +  QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
@@ -300,8 +317,8 @@ void Game2::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI;
-    QVector<double> canalEEGOpenBCI;
+    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

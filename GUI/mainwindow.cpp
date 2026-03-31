@@ -1,3 +1,6 @@
+#include <QDebug>
+#include "bio_signal/openBCI/open_bci_setting.h"
+
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "app_setting.h"
@@ -23,7 +26,6 @@ void MainWindow::on_pushButtonClose_clicked()
     close();
 }
 
-
 void MainWindow::on_pushButtonGame1_clicked()
 {
     Game1* window = new Game1();
@@ -36,7 +38,6 @@ void MainWindow::on_pushButtonGame1_clicked()
     else
         window->show();
 }
-
 
 void MainWindow::on_pushButtonGame2_clicked()
 {
@@ -51,7 +52,6 @@ void MainWindow::on_pushButtonGame2_clicked()
         window->show();
 }
 
-
 void MainWindow::on_pushButtonGame3_clicked()
 {
     Game3* window = new Game3();
@@ -63,5 +63,24 @@ void MainWindow::on_pushButtonGame3_clicked()
         window->showFullScreen();
     else
         window->show();
+}
+
+void MainWindow::on_pushButtonSetSettingOpenBci_clicked()
+{
+    openBCISetting setting;
+    setting.ECG=2;
+    setting.EEG1=4;
+    setting.EEG2=5;
+
+
+
+    DialogOpenBciSetting obcs(setting);
+
+    obcs.setStyleSheet(AppSetting::styleSheet);
+
+    if(obcs.exec()==QDialog::Accepted){
+        openBCISetting setting = obcs.getOpenBCISetting();
+        qDebug() << "setting resive";
+    }
 }
 

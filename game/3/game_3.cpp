@@ -1,12 +1,16 @@
 #include <QQuickItem>
 #include <QQmlEngine>
 #include <QDateTime>
+#include <QDir>
+#include <QLibraryInfo>
 
 #include "game_3.h"
 #include "ui_game_3.h"
 #include "../../GUI/info_dialog/info_dialog.h"
 #include "../../app_setting.h"
 #include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
+#include "../../bio_signal/analysis/EEG/eeg.h"
+#include "../../bio_signal/openBCI/openBCI_manager.h"
 
 #define MAX_GAME_MINUTES  10
 #define WINDOW_SIZE  10
@@ -14,7 +18,10 @@
 #define MIN_LVL  1
 #define MAX_LVL  38
 
-#define MAX_BALL_TREMOR 60
+#define MIN_BALL_TREMOR 0
+#define MAX_BALL_TREMOR 45
+
+#define MIN_BALL_SPEED 1
 #define MAX_BALL_SPEED 10
 
 #define SUCCSESS_TO_NEXT_LVL  0
@@ -23,6 +30,17 @@
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 #define STATE_BOUNDARY 200
 #define THRESHOLD_VARIABILITI_EEG 0.5
+
+namespace {
+OpenBCIManager& openBci()
+{
+    static OpenBCIManager mgr;
+    return mgr;
+}
+constexpr int kSampleRateHz = 250;
+constexpr int kLogWindowSec = 5;
+constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
+}
 
 Game3::Game3(QWidget *parent)
     : QMainWindow(parent)
@@ -44,7 +62,6 @@ Game3::Game3(QWidget *parent)
     game = ui->quickWidgetGame->rootObject();
 
     if (game) {
-        // Подключаем сигналы из QML к слотам C++
         connect(game, SIGNAL(onHit()), this, SLOT(onHit()));
         connect(game, SIGNAL(onCollision()), this, SLOT(onCollision()));
         connect(game, SIGNAL(levelCompleted()), this, SLOT(levelCompleted()));
@@ -110,9 +127,9 @@ void Game3::initGame(){
     gameMaxVictoryStreak=0;
     gameLossCounter=0;
 
-    ballTremor=0; // дрожание шарика
-    ballSpeed=0; // импульс шарика от клавиш
-
+    ballTremor=0;
+    ballSpeed=MIN_BALL_SPEED;
+    setBallSpeed();
     lvl=MIN_LVL;
     autoLvl=true;
 
@@ -146,6 +163,7 @@ void Game3::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
+    openBci().start();
     initGame();
     startNewLvl();
     startWriteGameLog();
@@ -210,9 +228,18 @@ void Game3::stopGame(){
     }
 
     gameRun=false;
+    openBci().stop();
 }
 
 void Game3::setBallTremor(){
+    if(MIN_BALL_TREMOR>ballTremor){
+        ballTremor=MIN_BALL_TREMOR;
+    }
+
+    if(MAX_BALL_TREMOR<ballTremor){
+        ballTremor=MAX_BALL_TREMOR;
+    }
+
     if (game) {
         game->setProperty("ballTremor", ballTremor); // угол дрожания
         qDebug() << "Угол дрожания: " << ballTremor;
@@ -220,6 +247,14 @@ void Game3::setBallTremor(){
 }
 
 void Game3::setBallSpeed(){
+    if(MIN_BALL_SPEED>ballSpeed){
+        ballSpeed=MIN_BALL_SPEED;
+    }
+
+    if(MAX_BALL_SPEED<ballSpeed){
+        ballSpeed=MAX_BALL_SPEED;
+    }
+
     if (game) {
         game->setProperty("ballSpeed", ballSpeed); // скорость
         qDebug() << "Новая скорость: " << ballSpeed;
@@ -266,6 +301,7 @@ void Game3::updateDisplayedGameTime(){
 }
 
 void Game3::startWriteGameLog(){
+    QDir().mkpath(DIR_GAME_LOG);
     gameLogfile = new QFile(DIR_GAME_LOG "game3_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
@@ -338,8 +374,8 @@ void Game3::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI;
-    QVector<double> canalEEGOpenBCI;
+    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

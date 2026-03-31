@@ -2,6 +2,8 @@
 #include <QQmlEngine>
 #include <QQuickItem>
 #include <QDateTime>
+#include <QDir>
+#include <QLibraryInfo>
 
 #include "game_1.h"
 #include "ui_game_1.h"
@@ -9,11 +11,23 @@
 #include "../../app_setting.h"
 #include "../../bio_signal/analysis/heart_rate_variability/heart_rate_variability.h"
 #include "../../bio_signal/analysis/EEG/eeg.h"
+#include "../../bio_signal/openBCI/openBCI_manager.h"
 
 #define MAX_GAME_MINUTES  10
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 #define START_LVL 3
 #define LEVEL_CORRECTION  0.8
+
+namespace {
+OpenBCIManager& openBci()
+{
+    static OpenBCIManager mgr;
+    return mgr;
+}
+constexpr int kSampleRateHz = 250;
+constexpr int kLogWindowSec = 5;
+constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
+}
 
 Game1::Game1(QWidget *parent)
     : QMainWindow(parent)
@@ -22,10 +36,10 @@ Game1::Game1(QWidget *parent)
     ui->setupUi(this);
 
 #ifdef QT_DEBUG
-    QString qmlPath = "C:/Qt/5.14.2/mingw73_64/qml";
+    QString qmlPath = "C:/Qt/5.14.2/mingw73_64/qml"; // Укажите ВАШ путь!
     ui->quickWidgetGame1->engine()->addImportPath(qmlPath);
+    qDebug() << "Debug: добавлен путь к QML:" << qmlPath;
 #endif
-
     ui->quickWidgetGame1->setSource(QUrl("qrc:/game/1/game_1.qml"));
 
     if (ui->quickWidgetGame1->status() == QQuickWidget::Error)
@@ -148,6 +162,7 @@ void Game1::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
+    openBci().start();
     initGame();
     startNewLvl();
 }
@@ -171,10 +186,12 @@ void Game1::stopGame(){
     }
 
     stopWriteGameLog();
+    openBci().stop();
     gameRun=false;
 }
 
 void Game1::startWriteGameLog(){
+    QDir().mkpath(DIR_GAME_LOG);
     gameLogfile = new QFile(DIR_GAME_LOG "game1_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
@@ -227,8 +244,8 @@ void Game1::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI;
-    QVector<double> canalEEGOpenBCI;
+    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

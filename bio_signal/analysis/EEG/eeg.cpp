@@ -1,5 +1,13 @@
 #include "eeg.h"
 
+#include <algorithm>
+#include <cmath>
+#include <numeric>
+
+namespace {
+constexpr double kPi = 3.141592653589793238462643383279502884;
+}
+
 EEG::EEG(){
 }
 
@@ -50,7 +58,7 @@ resultEEG EEG::calculate(){
     // 3. Окно Ханна
     // =========================
     for (int i = 0; i < N; ++i) {
-        double w = 0.5 * (1 - cos(2 * M_PI * i / (N - 1)));
+        double w = 0.5 * (1 - cos(2 * kPi * i / (N - 1)));
         signal[i] *= w;
     }
 
@@ -133,7 +141,7 @@ void EEG::computeFFT(QVector<std::complex<double>> &a)
 
     // Объединяем результаты
     for (int i = 0; i < n/2; ++i) {
-        std::complex<double> t = std::polar(1.0, -2.0 * M_PI * i / n) * odd[i];
+        std::complex<double> t = std::polar(1.0, -2.0 * kPi * i / n) * odd[i];
         a[i] = even[i] + t;
         a[i + n/2] = even[i] - t;
     }
