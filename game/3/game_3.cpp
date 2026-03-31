@@ -32,11 +32,6 @@
 #define THRESHOLD_VARIABILITI_EEG 0.5
 
 namespace {
-OpenBCIManager& openBci()
-{
-    static OpenBCIManager mgr;
-    return mgr;
-}
 constexpr int kSampleRateHz = 250;
 constexpr int kLogWindowSec = 5;
 constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
@@ -163,7 +158,7 @@ void Game3::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
-    openBci().start();
+    OpenBCIManager::instance().start();
     initGame();
     startNewLvl();
     startWriteGameLog();
@@ -228,7 +223,7 @@ void Game3::stopGame(){
     }
 
     gameRun=false;
-    openBci().stop();
+    OpenBCIManager::instance().stop();
 }
 
 void Game3::setBallTremor(){
@@ -374,8 +369,8 @@ void Game3::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
-    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
+    QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

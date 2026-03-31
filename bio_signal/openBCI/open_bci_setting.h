@@ -21,4 +21,7 @@ private:
     Ui::DialogOpenBciSetting *ui;
 };
 
+bool loadOpenBciSettings(openBCISetting& out);
+void saveOpenBciSettings(const openBCISetting& s);
+
 #endif // OPEN_BCI_SETTING_H

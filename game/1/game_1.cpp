@@ -19,11 +19,6 @@
 #define LEVEL_CORRECTION  0.8
 
 namespace {
-OpenBCIManager& openBci()
-{
-    static OpenBCIManager mgr;
-    return mgr;
-}
 constexpr int kSampleRateHz = 250;
 constexpr int kLogWindowSec = 5;
 constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
@@ -36,7 +31,12 @@ Game1::Game1(QWidget *parent)
     ui->setupUi(this);
 
 #ifdef QT_DEBUG
-    QString qmlPath = "C:/Qt/5.14.2/mingw73_64/qml"; // Укажите ВАШ путь!
+    QString qmlPath;
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+    qmlPath = QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
+#else
+    qmlPath = QLibraryInfo::location(QLibraryInfo::Qml2ImportsPath);
+#endif
     ui->quickWidgetGame1->engine()->addImportPath(qmlPath);
     qDebug() << "Debug: добавлен путь к QML:" << qmlPath;
 #endif
@@ -162,7 +162,7 @@ void Game1::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
-    openBci().start();
+    OpenBCIManager::instance().start();
     initGame();
     startNewLvl();
 }
@@ -186,7 +186,7 @@ void Game1::stopGame(){
     }
 
     stopWriteGameLog();
-    openBci().stop();
+    OpenBCIManager::instance().stop();
     gameRun=false;
 }
 
@@ -244,8 +244,8 @@ void Game1::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
-    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
+    QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

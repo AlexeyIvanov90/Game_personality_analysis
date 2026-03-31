@@ -9,6 +9,8 @@
 int main(int argc, char *argv[])
 {
     QApplication a(argc, argv);
+    a.setOrganizationName(QStringLiteral("GamePersonalityAnalysis"));
+    a.setApplicationName(QStringLiteral("Game_personality_analysis"));
 
     QTranslator translator;
     const QStringList uiLanguages = QLocale::system().uiLanguages();

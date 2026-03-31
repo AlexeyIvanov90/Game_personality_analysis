@@ -22,11 +22,6 @@
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 
 namespace {
-OpenBCIManager& openBci()
-{
-    static OpenBCIManager mgr;
-    return mgr;
-}
 constexpr int kSampleRateHz = 250;
 constexpr int kLogWindowSec = 5;
 constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
@@ -130,7 +125,7 @@ void Game2::startNewGame(){
         return;
 
     sendMessage("Старт игры", 1000);
-    openBci().start();
+    OpenBCIManager::instance().start();
     initGame();
     restartGame();
     startWriteGameLog();
@@ -165,7 +160,7 @@ void Game2::stopGame(){
             qDebug() << "Не удалось вызвать функцию stopGame";
     }
     gameRun=false;
-    openBci().stop();
+    OpenBCIManager::instance().stop();
 }
 
 void Game2::onSuccess(){
@@ -317,8 +312,8 @@ void Game2::writeGameLog(){
         return;
 
     //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI = openBci().getLatestEcgWindow(kLogWindowSamples);
-    QVector<double> canalEEGOpenBCI = openBci().getLatestEegWindow(kLogWindowSamples, 0);
+    QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
+    QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
     heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);

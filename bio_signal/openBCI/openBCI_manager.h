@@ -2,6 +2,7 @@
 #define OPENBCI_MANAGER_H
 
 #include <QObject>
+#include <QString>
 #include <QVector>
 #include <QMutex>
 #include <QByteArray>
@@ -19,7 +20,10 @@ class OpenBCIManager final : public QObject
 {
     Q_OBJECT
 public:
-    explicit OpenBCIManager(QObject* parent = nullptr);
+    static OpenBCIManager& instance();
+
+    OpenBCIManager(const OpenBCIManager&) = delete;
+    OpenBCIManager& operator=(const OpenBCIManager&) = delete;
 
     void setPortName(const QString& portName);
     QString portName() const;
@@ -32,13 +36,14 @@ public:
     // Temporary API until real OpenBCI integration is added.
     // Games can request a sliding window for analysis/logging.
     QVector<double> getLatestEcgWindow(int sampleCount) const;
-    QVector<double> getLatestEegWindow(int sampleCount, int channel = 0) const;
+    // channel < 0: использовать канал ЭЭГ1 из настроек (openBCISetting::EEG1)
+    QVector<double> getLatestEegWindow(int sampleCount, int channel = -1) const;
 
     // Feed samples from transport layer (serial/LSL/UDP).
     void pushEcgSample(double v);
     void pushEegSample(int channel, double v);
 
-    openBCISetting getSetting();
+    openBCISetting getSetting() const;
     void setSetting(openBCISetting setting);
 
 signals:
@@ -49,6 +54,8 @@ private slots:
     void onReadyRead();
 
 private:
+    explicit OpenBCIManager(QObject* parent = nullptr);
+
     static QVector<double> tailWindow(const QVector<double>& src, int sampleCount);
     void handleRxBytes(const QByteArray& bytes);
     void parseCytonPackets();

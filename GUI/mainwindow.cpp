@@ -14,6 +14,10 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
+
+    openBCISetting loaded;
+    if (loadOpenBciSettings(loaded))
+        OpenBCIManager::instance().setSetting(loaded);
 }
 
 MainWindow::~MainWindow()
@@ -67,20 +71,15 @@ void MainWindow::on_pushButtonGame3_clicked()
 
 void MainWindow::on_pushButtonSetSettingOpenBci_clicked()
 {
-    openBCISetting setting;
-    setting.ECG=2;
-    setting.EEG1=4;
-    setting.EEG2=5;
+    openBCISetting setting = OpenBCIManager::instance().getSetting();
 
+    DialogOpenBciSetting dlg(setting, this);
+    dlg.setStyleSheet(AppSetting::styleSheet);
 
-
-    DialogOpenBciSetting obcs(setting);
-
-    obcs.setStyleSheet(AppSetting::styleSheet);
-
-    if(obcs.exec()==QDialog::Accepted){
-        openBCISetting setting = obcs.getOpenBCISetting();
-        qDebug() << "setting resive";
+    if (dlg.exec() == QDialog::Accepted) {
+        setting = dlg.getOpenBCISetting();
+        OpenBCIManager::instance().setSetting(setting);
+        saveOpenBciSettings(setting);
     }
 }
 

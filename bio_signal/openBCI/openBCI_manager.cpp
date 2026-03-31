@@ -33,11 +33,21 @@ constexpr int kMaxSamplesToKeep = kDefaultSampleRateHz * kMaxSecondsToKeep;
 
 } // namespace
 
+OpenBCIManager& OpenBCIManager::instance()
+{
+    static OpenBCIManager s;
+    return s;
+}
+
 OpenBCIManager::OpenBCIManager(QObject* parent)
     : QObject(parent)
 {
-    // Default to 8 EEG channels (Cyton)
     eegByChannel_.resize(8);
+    setting_.comport = QStringLiteral("COM3");
+    setting_.ECG = 0;
+    setting_.EEG1 = 0;
+    setting_.EEG2 = 1;
+    portName_ = setting_.comport;
 }
 
 void OpenBCIManager::setPortName(const QString& portName)
@@ -120,9 +130,12 @@ QVector<double> OpenBCIManager::getLatestEcgWindow(int sampleCount) const
 QVector<double> OpenBCIManager::getLatestEegWindow(int sampleCount, int channel) const
 {
     QMutexLocker lock(&mutex_);
-    if (channel < 0 || channel >= eegByChannel_.size())
-        return {};
-    return tailWindow(eegByChannel_[channel], sampleCount);
+    int ch = channel;
+    if (ch < 0)
+        ch = qBound(0, static_cast<int>(setting_.EEG1), 7);
+    else
+        ch = qBound(0, ch, qMax(0, eegByChannel_.size() - 1));
+    return tailWindow(eegByChannel_[ch], sampleCount);
 }
 
 void OpenBCIManager::pushEcgSample(double v)
@@ -216,8 +229,8 @@ void OpenBCIManager::parseCytonPackets()
             eegByChannel_[ch].push_back(double(raw));
         }
 
-        // For now map ECG to EEG channel 0 (until ECG channel selection is defined).
-        ecg_.push_back(eegByChannel_[0].isEmpty() ? 0.0 : eegByChannel_[0].back());
+        const int ecgCh = qBound(0, static_cast<int>(setting_.ECG), 7);
+        ecg_.push_back(eegByChannel_[ecgCh].isEmpty() ? 0.0 : eegByChannel_[ecgCh].back());
 
         trimBuffersIfNeeded();
 
@@ -237,10 +250,29 @@ void OpenBCIManager::trimBuffersIfNeeded()
     }
 }
 
-openBCISetting OpenBCIManager::getSetting(){
+openBCISetting OpenBCIManager::getSetting() const
+{
+    QMutexLocker lock(&mutex_);
     return setting_;
 }
 
-void OpenBCIManager::setSetting(openBCISetting setting){
-    setting_=setting;
+void OpenBCIManager::setSetting(openBCISetting setting)
+{
+    bool wasRunning = false;
+    {
+        QMutexLocker lock(&mutex_);
+        wasRunning = running_;
+        if (running_ && serial_ && serial_->isOpen()) {
+            serial_->write("s");
+            serial_->flush();
+            serial_->close();
+        }
+        running_ = false;
+        setting_ = setting;
+        if (!setting.comport.isEmpty())
+            portName_ = setting.comport;
+        rxBuffer_.clear();
+    }
+    if (wasRunning)
+        emit runningChanged(false);
 }
