@@ -299,10 +299,19 @@ void Game2::writeGameLog(){
     if (!gameLogStream)
         return;
 
-    speed = successCounter/(60.*(gameTimerCounter+1));
+    //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
+    QVector<double> canalECGOpenBCI;
+    QVector<double> canalEEGOpenBCI;
 
-    resultHeartRateVariability heartRateVariability;
-    resultEEG EEG;
+    HeartRateVariability heartRateVariabilityAnalaiser;
+    heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);
+    EEG eegAnalaiser;
+    eegAnalaiser.setData(canalEEGOpenBCI);
+
+    resultHeartRateVariability heartRateVariability = heartRateVariabilityAnalaiser.calculate();
+    resultEEG EEG = eegAnalaiser.calculate();
+
+    speed = successCounter/(60.*(gameTimerCounter+1));
 
     *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
                    << QString::number(heartRateVariability.M) << ","

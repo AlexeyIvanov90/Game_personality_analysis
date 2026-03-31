@@ -17,7 +17,7 @@ class EEG
 public:
     EEG();
     ~EEG();
-    void setData(QVector<double>& data);
+    void setData(const QVector<double>& data);
     resultEEG calculate();
     void computeFFT(QVector<std::complex<double>> &a);
 
