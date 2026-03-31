@@ -110,9 +110,9 @@ struct resultHeartRateVariability{
     int calculateVasomotorCenter(){ //Вазомоторный (сосудистый) центр
         if (LF_percent >= 55)
             return 2;
-        else if (LF_percent >= 40 and LF_percent < 55)
+        else if (LF_percent >= 40 && LF_percent < 55)
             return 1;
-        else if (LF_percent >= 11  and LF_percent < 20)
+        else if (LF_percent >= 11  && LF_percent < 20)
             return -1;
         else if (LF_percent < 11)
             return -2;
@@ -122,9 +122,9 @@ struct resultHeartRateVariability{
     int calculateSympatheticCardiovascularSubcorticalNerveCenter(){ //Симпатический сердечно-сосудистый подкорковый нервный центр
         if(VLF_percent >= 60)
             return 2;
-        else if(VLF_percent >= 45 and VLF_percent < 60)
+        else if(VLF_percent >= 45 && VLF_percent < 60)
             return 1;
-        else if(VLF_percent >= 16  and VLF_percent < 25)
+        else if(VLF_percent >= 16  && VLF_percent < 25)
             return -1;
         else if(VLF_percent < 16)
             return -2 ;
