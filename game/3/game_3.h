@@ -47,7 +47,7 @@ private slots:
     void setBallTremor();
     void setBallSpeed();
 
-    void sendMessage(QString message, int sec=0);
+    void sendMessage(QString message, int milliseconds=0);
 
     void onTimeout();
     void updateDisplayedGameTime();
@@ -56,6 +56,7 @@ private slots:
     void writeHeader();
     void writeGameLog();
     void stopWriteGameLog();
+
     bool isLowVariability(resultEEG newEEG);
 private:
     Ui::Game3 *ui;
@@ -75,6 +76,7 @@ private:
     int gameMaxVictoryStreak;
     int gameLossCounter;
     bool gameRun=false;
+    bool logWrite=false;
 
     int ballTremor; // дрожание шарика
     int ballSpeed; // импульс шарика от клавиш

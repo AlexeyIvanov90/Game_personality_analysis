@@ -14,7 +14,7 @@ EEG::EEG(){
 EEG::~EEG(){
 }
 
-void EEG::setData(const QVector<double>& data){
+void EEG::setDataFromSensor(const QVector<double>& data){
     data_=data;
 }
 

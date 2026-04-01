@@ -198,7 +198,9 @@ class HeartRateVariability{
 public:
     HeartRateVariability();
     ~HeartRateVariability();
-    void setData(const QVector<double>& data);
+
+    void setDataFromSensor(const QVector<double>& dataFromSensor);
+    void setHeartRateIntervals(const QVector<double>& heartRateIntervals);
 
     const resultHeartRateVariability calculate();
 
@@ -233,7 +235,7 @@ private:
     QVector<double> frequencies_;
     QVector<double> powerSpectrum_;
 
-    QVector<double> data_;
+    QVector<double> heartRateIntervals_;
     resultHeartRateVariability result_;
 };
 

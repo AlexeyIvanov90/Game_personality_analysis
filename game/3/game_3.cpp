@@ -21,7 +21,8 @@
 #define MIN_BALL_TREMOR 0
 #define MAX_BALL_TREMOR 45
 
-#define MIN_BALL_SPEED 1
+#define MIN_BALL_SPEED 4
+#define START_BALL_SPEED 4
 #define MAX_BALL_SPEED 10
 
 #define SUCCSESS_TO_NEXT_LVL  0
@@ -123,7 +124,7 @@ void Game3::initGame(){
     gameLossCounter=0;
 
     ballTremor=0;
-    ballSpeed=MIN_BALL_SPEED;
+    ballSpeed=START_BALL_SPEED;
     setBallSpeed();
     lvl=MIN_LVL;
     autoLvl=true;
@@ -256,9 +257,9 @@ void Game3::setBallSpeed(){
     }
 }
 
-void Game3::sendMessage(QString message, int sec){
+void Game3::sendMessage(QString message, int milliseconds){
     if (game) {
-        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, sec) );
+        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, milliseconds) );
         if (!success)
             qDebug() << "Не удалось вызвать функцию showTempMessage";
     }
@@ -296,6 +297,10 @@ void Game3::updateDisplayedGameTime(){
 }
 
 void Game3::startWriteGameLog(){
+    if(logWrite)
+        return;
+    logWrite=true;
+
     QDir().mkpath(DIR_GAME_LOG);
     gameLogfile = new QFile(DIR_GAME_LOG "game3_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
@@ -372,13 +377,13 @@ void Game3::writeGameLog(){
     QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
     QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
-    HeartRateVariability heartRateVariabilityAnalaiser;
-    heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);
-    EEG eegAnalaiser;
-    eegAnalaiser.setData(canalEEGOpenBCI);
+    HeartRateVariability heartRateVariabilityAnalyzer;
+    heartRateVariabilityAnalyzer.setDataFromSensor(canalECGOpenBCI);
+    EEG eegAnalyzer;
+    eegAnalyzer.setDataFromSensor(canalEEGOpenBCI);
 
-    resultHeartRateVariability heartRateVariability = heartRateVariabilityAnalaiser.calculate();
-    resultEEG EEG = eegAnalaiser.calculate();
+    resultHeartRateVariability heartRateVariability = heartRateVariabilityAnalyzer.calculate();
+    resultEEG EEG = eegAnalyzer.calculate();
 
     if(heartRateVariability.SI>STATE_BOUNDARY)
         ballTremor++;
@@ -394,7 +399,7 @@ void Game3::writeGameLog(){
 
     speed = allHitCount/(60.*(gameTimerCounter+1));
 
-    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
+    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss") << ","
                    << QString::number(heartRateVariability.M) << ","
                    << QString::number(heartRateVariability.SDNN) << ","
                    << QString::number(heartRateVariability.TP) << ","
@@ -434,4 +439,5 @@ void Game3::stopWriteGameLog(){
         delete gameLogfile;
         gameLogfile = nullptr;
     }
+    logWrite=false;
 }

@@ -41,7 +41,7 @@ private slots:
     void onCollision();
     void onTimeout();
     void updateDisplayedGameTime();
-    void sendMessage(QString message, int sec=0);
+    void sendMessage(QString message, int milliseconds=0);
     void stopGame();
 
     void startWriteGameLog();
@@ -59,6 +59,7 @@ private:
     double accuracy;
     double speed;
     bool gameRun=false;
+    bool logWrite=false;
 
     int successCounter;
     int gameVictorystreak;

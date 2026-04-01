@@ -41,10 +41,15 @@ Item {
     property bool isDucking: false
 
     property real gravity: 0.8
-    property real minJumpStrength: -8
-    property real maxJumpStrength: -15
-    property real jumpChargeTime: 0
-    property bool isChargingJump: false
+    // Высота прыжка в пикселях (насколько выше «земли» поднимается низ динозавра)
+    property real minJumpLiftPx: 52
+    property real maxJumpLiftPx: 135
+    // За это время удержания пробела достигается maxJumpLiftPx
+    property real jumpMaxHoldMs: 320
+    property real jumpHoldBoost: 0.42
+    property real jumpMaxUpVelocity: -16
+    property real jumpHoldTime: 0
+    property bool jumpSpaceHeld: false
 
     property real speed: 5
     property bool gameActive: false
@@ -154,55 +159,39 @@ Item {
         currentDuckFrame = 0
         currentPteroFrame = 0
         framesSinceLastObstacle = 0
+        jumpSpaceHeld = false
+        jumpHoldTime = 0
         gameTimer.restart()
         dinoAnimTimer.restart()
         pteroAnimTimer.restart()
         canvas.requestPaint()
     }
 
-    // Функция начала заряда прыжка (нажатие клавиши)
-    function startJumpCharge() {
-        if (gameActive && onGround && !isChargingJump && !isDucking) {
-            isChargingJump = true
-            jumpChargeTime = 0
-            chargeTimer.start()
-        }
+    // Прыжок сразу при нажатии пробела; минимальная высота — через начальную скорость √(2·g·h_min)
+    function beginJumpFromGround() {
+        if (!gameActive || !onGround || isDucking)
+            return
+        jumpSpaceHeld = true
+        jumpHoldTime = 0
+        var g = gravity
+        dinoVy = -Math.sqrt(Math.max(0.001, 2.0 * g * minJumpLiftPx))
+        onGround = false
     }
 
-    // Функция выполнения прыжка (отпускание клавиши)
-    function performJump() {
-        if (gameActive && onGround && isChargingJump) {
-            chargeTimer.stop()
-
-            // Вычисляем силу прыжка в зависимости от времени нажатия
-            var jumpPower = minJumpStrength
-            if (jumpChargeTime > 0) {
-                var chargePercent = Math.min(1.0, jumpChargeTime / 300)
-                jumpPower = minJumpStrength + (maxJumpStrength - minJumpStrength) * chargePercent
-            }
-
-            dinoVy = jumpPower
-            onGround = false
-            isChargingJump = false
-        }
+    function endJumpHold() {
+        jumpSpaceHeld = false
     }
 
-    // Функция отмены заряда прыжка
-    function cancelJumpCharge() {
-        if (isChargingJump) {
-            chargeTimer.stop()
-            isChargingJump = false
-        }
+    function cancelJumpHold() {
+        jumpSpaceHeld = false
     }
 
     property bool isDuckKeyPressed: false
 
     // Функция пригибания
     function duck() {
-        if (gameActive && onGround && !isChargingJump && !isDucking) {
-            if (isChargingJump) {
-                cancelJumpCharge()
-            }
+        if (gameActive && onGround && !isDucking) {
+            cancelJumpHold()
             isDucking = true
             currentDuckFrame = 0
             dinoWidth = duckWidth
@@ -267,7 +256,19 @@ Item {
     function updateGame() {
         if (!gameActive) return
 
-        // Физика динозавра
+        // Физика динозавра: удержание пробела увеличивает целевую высоту до max; отпускание — только гравитация
+        if (!onGround && jumpSpaceHeld) {
+            jumpHoldTime += 16
+            var t = Math.min(1.0, jumpHoldTime / jumpMaxHoldMs)
+            var liftTarget = minJumpLiftPx + t * (maxJumpLiftPx - minJumpLiftPx)
+            var apexY = groundY - dinoHeight - liftTarget
+            if (dinoVy < 0 && dinoY > apexY) {
+                dinoVy -= jumpHoldBoost
+                if (dinoVy < jumpMaxUpVelocity)
+                    dinoVy = jumpMaxUpVelocity
+            }
+        }
+
         dinoY += dinoVy
         dinoVy += gravity
 
@@ -275,6 +276,8 @@ Item {
             dinoY = groundY - dinoHeight
             dinoVy = 0
             onGround = true
+            jumpSpaceHeld = false
+            jumpHoldTime = 0
         } else {
             onGround = false
         }
@@ -295,7 +298,7 @@ Item {
                 dinoAnimTimer.stop()
                 duckAnimTimer.stop()
                 pteroAnimTimer.stop()
-                cancelJumpCharge()
+                cancelJumpHold()
                 onCollision()
                 return
             } else {
@@ -326,7 +329,7 @@ Item {
                 dinoAnimTimer.stop()
                 duckAnimTimer.stop()
                 pteroAnimTimer.stop()
-                cancelJumpCharge()
+                cancelJumpHold()
                 onCollision()
                 return
             } else {
@@ -354,7 +357,7 @@ Item {
                 dinoAnimTimer.stop()
                 duckAnimTimer.stop()
                 pteroAnimTimer.stop()
-                cancelJumpCharge()
+                cancelJumpHold()
                 onCollision()
                 return
             } else {
@@ -403,19 +406,6 @@ Item {
 
     function rectCollision(x1, y1, w1, h1, x2, y2, w2, h2) {
         return (x1 < x2 + w2 && x1 + w1 > x2 && y1 < y2 + h2 && y1 + h1 > y2)
-    }
-
-    // Таймер для заряда прыжка
-    Timer {
-        id: chargeTimer
-        interval: 16
-        repeat: true
-        onTriggered: {
-            jumpChargeTime += 16
-            if (jumpChargeTime > 300) {
-                jumpChargeTime = 300
-            }
-        }
     }
 
     // Таймер анимации динозавра (бег)
@@ -492,7 +482,7 @@ Item {
 
         Keys.onPressed: (event) => {
             if (event.key === Qt.Key_Space) {
-                startJumpCharge()
+                beginJumpFromGround()
                 event.accepted = true
             } else if (event.key === Qt.Key_Down) {
                 if (!isDuckKeyPressed) {
@@ -506,7 +496,7 @@ Item {
 
         Keys.onReleased: (event) => {
             if (event.key === Qt.Key_Space) {
-                performJump()
+                endJumpHold()
                 event.accepted = true
             } else if (event.key === Qt.Key_Down) {
                 if (isDuckKeyPressed) {

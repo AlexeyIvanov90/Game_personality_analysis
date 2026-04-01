@@ -8,29 +8,129 @@
 #define HIST_MIN 400.0
 #define HIST_MAX 1300.0
 
+namespace {
+
+// Частота дискретизации Cyton по умолчанию (см. OpenBCIManager).
+constexpr double kOpenBciFsHz = 250.0;
+constexpr double kEcgMsPerSample = 1000.0 / kOpenBciFsHz;
+// Минимум ~300 мс между комплексами QRS (рефрактерный период).
+constexpr int kRPeakMinIntervalSamples = static_cast<int>(0.30 * kOpenBciFsHz);
+constexpr double kRrMinMs = 300.0;
+constexpr double kRrMaxMs = 2000.0;
+
+} // namespace
+
 
 HeartRateVariability::HeartRateVariability(){}
 
 HeartRateVariability::~HeartRateVariability(){}
 
-void HeartRateVariability::setData(const QVector<double>& data){
-    data_.clear();
-    data_.append(data);
+
+void HeartRateVariability::setDataFromSensor(const QVector<double>& dataFromSensor){
+    heartRateIntervals_.clear();
+
+    const int n = dataFromSensor.size();
+    if (n < 16)
+        return;
+
+    // --- 1. Убираем постоянную составляющую ---
+    double mean = 0.0;
+    for (double v : dataFromSensor)
+        mean += v;
+    mean /= static_cast<double>(n);
+
+    QVector<double> x(n);
+    for (int i = 0; i < n; ++i)
+        x[i] = dataFromSensor[i] - mean;
+
+    // --- 2. Лёгкое сглаживание (взвешенное 3-точечное) ---
+    QVector<double> s(n);
+    s[0] = x[0];
+    s[n - 1] = x[n - 1];
+    for (int i = 1; i < n - 1; ++i)
+        s[i] = (x[i - 1] + 2.0 * x[i] + x[i + 1]) * 0.25;
+
+    // --- 3. Энергия центральной разности (аналог этапов derivative + squaring) ---
+    QVector<double> e(n, 0.0);
+    for (int i = 1; i < n - 1; ++i) {
+        const double d = s[i + 1] - s[i - 1];
+        e[i] = d * d;
+    }
+
+    // --- 4. Скользящее интегрирование (~30–40 мс окно) ---
+    const int intWin = std::max(3, static_cast<int>(std::lround(0.032 * kOpenBciFsHz)));
+    QVector<double> env(n, 0.0);
+    for (int i = 0; i < n; ++i) {
+        const int j0 = std::max(0, i - intWin + 1);
+        double sum = 0.0;
+        for (int j = j0; j <= i; ++j)
+            sum += e[j];
+        env[i] = sum / static_cast<double>(i - j0 + 1);
+    }
+
+    const auto envMaxIt = std::max_element(env.constBegin(), env.constEnd());
+    const double envMax = *envMaxIt;
+    if (envMax <= 1e-18)
+        return;
+
+    const double thresh = envMax * 0.45;
+
+    // --- 5. Локальные максимумы огибающей + привязка к |R| на исходном сглаженном сигнале ---
+    QVector<int> peakIdx;
+    peakIdx.reserve(n / std::max(1, kRPeakMinIntervalSamples) + 2);
+
+    int lastPeak = -kRPeakMinIntervalSamples;
+    for (int i = 2; i < n - 2; ++i) {
+        if (env[i] < thresh)
+            continue;
+        if (!(env[i] > env[i - 1] && env[i] >= env[i + 1]))
+            continue;
+
+        const int i0 = std::max(1, i - 5);
+        const int i1 = std::min(n - 2, i + 5);
+        int best = i;
+        double bestAbs = std::abs(s[i]);
+        for (int j = i0; j <= i1; ++j) {
+            const double aj = std::abs(s[j]);
+            if (aj > bestAbs) {
+                bestAbs = aj;
+                best = j;
+            }
+        }
+
+        if (best - lastPeak < kRPeakMinIntervalSamples)
+            continue;
+
+        peakIdx.push_back(best);
+        lastPeak = best;
+    }
+
+    // --- 6. RR в миллисекундах (ожидается calculateStatistic / гистограмма 400–1300 мс) ---
+    for (int k = 1; k < peakIdx.size(); ++k) {
+        const double rr = (peakIdx[k] - peakIdx[k - 1]) * kEcgMsPerSample;
+        if (rr >= kRrMinMs && rr <= kRrMaxMs)
+            heartRateIntervals_.append(rr);
+    }
+}
+
+void HeartRateVariability::setHeartRateIntervals(const QVector<double>& heartRateIntervals){
+    heartRateIntervals_.clear();
+    heartRateIntervals_.append(heartRateIntervals);
 }
 
 void HeartRateVariability::calculateStatistic(){   
-    int n = data_.size();
+    int n = heartRateIntervals_.size();
     if (n < 2)
         return;
 
-    double sum = std::accumulate(data_.begin(), data_.end(), 0.0);
+    double sum = std::accumulate(heartRateIntervals_.begin(), heartRateIntervals_.end(), 0.0);
 
     result_.HR = 60.0 * 1000.0 * (double(n) / sum);
     result_.M  = sum / n;
 
     // SDNN
     double tmpSDNN = 0.0;
-    for (double x : data_)
+    for (double x : heartRateIntervals_)
         tmpSDNN += (x - result_.M) * (x - result_.M);
 
     result_.SDNN = std::sqrt(tmpSDNN / (n - 1));
@@ -40,13 +140,13 @@ void HeartRateVariability::calculateStatistic(){
     double tmpRMSSD = 0.0;
     for (int i = 0; i < n - 1; ++i)
     {
-        double diff = data_[i + 1] - data_[i];
+        double diff = heartRateIntervals_[i + 1] - heartRateIntervals_[i];
         tmpRMSSD += diff * diff;
     }
     result_.RMSSD = std::sqrt(tmpRMSSD / (n - 1));
 
     // Min / Max
-    auto minmax = std::minmax_element(data_.begin(), data_.end());
+    auto minmax = std::minmax_element(heartRateIntervals_.begin(), heartRateIntervals_.end());
     result_.Mn = *minmax.first;
     result_.Mx = *minmax.second;
     result_.MxdMn = result_.Mx - result_.Mn;
@@ -55,7 +155,7 @@ void HeartRateVariability::calculateStatistic(){
     int bins = int((HIST_MAX - HIST_MIN) / BIN_WIDTH_MS);
     QVector<int> hist(bins, 0);
 
-    for (double x : data_)
+    for (double x : heartRateIntervals_)
     {
         if (x < HIST_MIN || x >= HIST_MAX)
             continue;
@@ -99,7 +199,7 @@ void HeartRateVariability::calculateStatistic(){
 }
 
 void HeartRateVariability::setAutocorrelationMaxLag(int maxLag){
-    maxLagAutocorrelation_=std::min(128, data_.size() - 1);
+    maxLagAutocorrelation_=std::min(128, heartRateIntervals_.size() - 1);
 }
 
 QVector<double> HeartRateVariability::getVectorAutocorrelation(){
@@ -109,7 +209,7 @@ QVector<double> HeartRateVariability::getVectorAutocorrelation(){
 
 void HeartRateVariability::calculateAutocorrelation()
 {
-    int n = data_.size();
+    int n = heartRateIntervals_.size();
     if (n < 3)
         return;
 
@@ -127,8 +227,8 @@ void HeartRateVariability::calculateAutocorrelation()
 
         for (int i = 0; i < m; ++i)
         {
-            double x = data_[i];
-            double y = data_[i + k];
+            double x = heartRateIntervals_[i];
+            double y = heartRateIntervals_[i + k];
 
             sum_xy += x * y;
             sum_x  += x;
@@ -181,26 +281,26 @@ QVector<double> HeartRateVariability::interpolateData()
 {
     qDebug() << "\n=== НАЧАЛО ИНТЕРПОЛЯЦИИ (Cubic Spline) ===";
     qDebug() << "dt =" << spectralAnalysisLag_ << "с";
-    qDebug() << "Размер data_ =" << data_.size();
+    qDebug() << "Размер heartRateIntervals_ =" << heartRateIntervals_.size();
 
-    if (data_.isEmpty()) return QVector<double>();
-    if (data_.size() < 3) return data_; // для сплайна нужно >= 3 точки
+    if (heartRateIntervals_.isEmpty()) return QVector<double>();
+    if (heartRateIntervals_.size() < 3) return heartRateIntervals_; // для сплайна нужно >= 3 точки
 
     // ------------------------------------------------------------------
     // 1. Формируем временные метки (x)
     // ------------------------------------------------------------------
     QVector<double> x;
-    x.reserve(data_.size() + 1);
+    x.reserve(heartRateIntervals_.size() + 1);
 
     double current_time = 0.0;
     x.push_back(current_time);
 
-    for (int i = 0; i < data_.size(); ++i) {
-        current_time += data_[i] / 1000.0;
+    for (int i = 0; i < heartRateIntervals_.size(); ++i) {
+        current_time += heartRateIntervals_[i] / 1000.0;
         x.push_back(current_time);
     }
 
-    QVector<double> y = data_;   // значения
+    QVector<double> y = heartRateIntervals_;   // значения
 
     int n = y.size();
 
@@ -536,7 +636,7 @@ void HeartRateVariability::calculateFrequencyBands()
 
 void HeartRateVariability::performSpectralAnalysis()
 {
-    if (data_.isEmpty()) {
+    if (heartRateIntervals_.isEmpty()) {
         qDebug() << "Ошибка: нет данных";
         return;
     }

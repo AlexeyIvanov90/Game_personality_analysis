@@ -191,6 +191,10 @@ void Game1::stopGame(){
 }
 
 void Game1::startWriteGameLog(){
+    if(logWrite)
+        return;
+    logWrite=true;
+
     QDir().mkpath(DIR_GAME_LOG);
     gameLogfile = new QFile(DIR_GAME_LOG "game1_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
@@ -248,16 +252,16 @@ void Game1::writeGameLog(){
     QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
     HeartRateVariability heartRateVariabilityAnalaiser;
-    heartRateVariabilityAnalaiser.setData(canalECGOpenBCI);
+    heartRateVariabilityAnalaiser.setDataFromSensor(canalECGOpenBCI);
     EEG eegAnalaiser;
-    eegAnalaiser.setData(canalEEGOpenBCI);
+    eegAnalaiser.setDataFromSensor(canalEEGOpenBCI);
 
     resultHeartRateVariability heartRateVariability = heartRateVariabilityAnalaiser.calculate();
     resultEEG EEG = eegAnalaiser.calculate();
 
     speed = allHitCount/(60.*(gameTimerCounter+1));
 
-    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")
+    *gameLogStream << QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss") << ","
                    << QString::number(heartRateVariability.M) << ","
                    << QString::number(heartRateVariability.SDNN) << ","
                    << QString::number(heartRateVariability.TP) << ","
@@ -281,7 +285,7 @@ void Game1::writeGameLog(){
     gameLogStream->flush();
 }
 
-void Game1::stopWriteGameLog(){
+void Game1::stopWriteGameLog(){       
     if (logTimer.isActive())
         logTimer.stop();
 
@@ -297,11 +301,12 @@ void Game1::stopWriteGameLog(){
         delete gameLogfile;
         gameLogfile = nullptr;
     }
+    logWrite=false;
 }
 
-void Game1::sendMessage(QString message, int sec){
+void Game1::sendMessage(QString message, int milliseconds){
     if (game) {
-        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, sec) );
+        bool success = QMetaObject::invokeMethod(game, "showTempMessage", Q_ARG(QVariant, message), Q_ARG(QVariant, milliseconds) );
         if (!success)
             qDebug() << "Не удалось вызвать функцию showTempMessage";
     }

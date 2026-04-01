@@ -49,7 +49,7 @@ private slots:
 
     void onTimeout();
     void updateDisplayedGameTime();
-    void sendMessage(QString message, int sec=0);
+    void sendMessage(QString message, int milliseconds=0);
 private:
     Ui::Game1 *ui;
 
@@ -65,6 +65,7 @@ private:
     int lvl;
     bool autoLvl;
     bool gameRun=false;
+    bool logWrite=false;
 
     int gameVictoryCounter;
     int gameVictorystreak;
