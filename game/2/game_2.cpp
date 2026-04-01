@@ -33,11 +33,6 @@ Game2::Game2(QWidget *parent)
 {
     ui->setupUi(this);
 
-#ifdef QT_DEBUG
-    QString qmlPath = "C:/Qt/5.14.2/mingw73_64/qml"; // Укажите ВАШ путь!
-    ui->quickWidgetGame->engine()->addImportPath(qmlPath);
-    qDebug() << "Debug: добавлен путь к QML:" << qmlPath;
-#endif
     ui->quickWidgetGame->setSource(QUrl("qrc:/game/2/game_2.qml"));
 
     if (ui->quickWidgetGame->status() == QQuickWidget::Error) {

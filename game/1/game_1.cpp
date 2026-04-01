@@ -30,22 +30,13 @@ Game1::Game1(QWidget *parent)
 {
     ui->setupUi(this);
 
-#ifdef QT_DEBUG
-    QString qmlPath;
-#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
-    qmlPath = QLibraryInfo::path(QLibraryInfo::QmlImportsPath);
-#else
-    qmlPath = QLibraryInfo::location(QLibraryInfo::Qml2ImportsPath);
-#endif
-    ui->quickWidgetGame1->engine()->addImportPath(qmlPath);
-    qDebug() << "Debug: добавлен путь к QML:" << qmlPath;
-#endif
-    ui->quickWidgetGame1->setSource(QUrl("qrc:/game/1/game_1.qml"));
+    ui->quickWidgetGame->setSource(QUrl("qrc:/game/1/game_1.qml"));
 
-    if (ui->quickWidgetGame1->status() == QQuickWidget::Error)
+    if (ui->quickWidgetGame->status() == QQuickWidget::Error)
         qDebug() << "Ошибка загрузки QML";
 
-    game = ui->quickWidgetGame1->rootObject();
+    game = ui->quickWidgetGame->rootObject();
+
     if (game) {
         connect(game, SIGNAL(hitShape()), this, SLOT(onHit()));
         connect(game, SIGNAL(missShape()), this, SLOT(onMiss()));

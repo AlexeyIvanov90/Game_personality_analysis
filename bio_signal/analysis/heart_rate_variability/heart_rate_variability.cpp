@@ -637,7 +637,7 @@ void HeartRateVariability::calculateFrequencyBands()
 void HeartRateVariability::performSpectralAnalysis()
 {
     if (heartRateIntervals_.isEmpty()) {
-        qDebug() << "Ошибка: нет данных";
+        qDebug() << "Ошибка: нет данных для анализа RR-интервалов";
         return;
     }
 

@@ -82,7 +82,7 @@
      <string>Стоп</string>
     </property>
    </widget>
-   <widget class="QQuickWidget" name="quickWidgetGame1">
+   <widget class="QQuickWidget" name="quickWidgetGame">
     <property name="geometry">
      <rect>
       <x>20</x>
