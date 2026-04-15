@@ -40,6 +40,7 @@ DialogOpenBciSetting::DialogOpenBciSetting(openBCISetting setting, QWidget *pare
     , ui(new Ui::DialogOpenBciSetting)
 {
     ui->setupUi(this);
+    this->setWindowFlags(Qt::FramelessWindowHint);
 
     connect(ui->pushButtonSave, &QPushButton::clicked, this, &QDialog::accept);
     connect(ui->pushButtonClose, &QPushButton::clicked, this, &QDialog::reject);

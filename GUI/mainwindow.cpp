@@ -73,7 +73,7 @@ void MainWindow::on_pushButtonSetSettingOpenBci_clicked()
 {
     openBCISetting setting = OpenBCIManager::instance().getSetting();
 
-    DialogOpenBciSetting dlg(setting, this);
+    DialogOpenBciSetting dlg(setting);
     dlg.setStyleSheet(AppSetting::styleSheet);
 
     if (dlg.exec() == QDialog::Accepted) {
