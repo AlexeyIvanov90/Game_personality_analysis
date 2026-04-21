@@ -94,6 +94,12 @@ void OpenBCIManager::start()
         return;
     }
 
+    ecg_.clear();
+    for (auto& ch : eegByChannel_)
+        ch.clear();
+    if (eegByChannel_.size() < 8)
+        eegByChannel_.resize(8);
+
     // Start streaming (Cyton): 'b' is commonly used to start binary stream; 's' to stop.
     serial_->write("b");
     serial_->flush();
@@ -136,6 +142,23 @@ QVector<double> OpenBCIManager::getLatestEegWindow(int sampleCount, int channel)
     else
         ch = qBound(0, ch, qMax(0, eegByChannel_.size() - 1));
     return tailWindow(eegByChannel_[ch], sampleCount);
+}
+
+bool OpenBCIManager::hasAtLeastSamples(int sampleCount, int eegChannel) const
+{
+    if (sampleCount <= 0)
+        return true;
+    QMutexLocker lock(&mutex_);
+    if (ecg_.size() < sampleCount)
+        return false;
+    int ch = eegChannel;
+    if (ch < 0)
+        ch = qBound(0, static_cast<int>(setting_.EEG1), 7);
+    else
+        ch = qBound(0, ch, qMax(0, eegByChannel_.size() - 1));
+    if (ch >= eegByChannel_.size())
+        return false;
+    return eegByChannel_[ch].size() >= sampleCount;
 }
 
 void OpenBCIManager::pushEcgSample(double v)

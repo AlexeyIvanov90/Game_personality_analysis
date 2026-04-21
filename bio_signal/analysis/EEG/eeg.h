@@ -3,6 +3,7 @@
 
 #include <QVector>
 #include <complex>
+#include <QDebug>
 
 struct resultEEG{
     double powerAlphaRhythm=0.;
@@ -10,6 +11,13 @@ struct resultEEG{
     double  alphaRhythms_percent=0.;
     double  betaRhythms_percent=0.;
     double ratio=0.;
+    void print(){
+        qDebug() << "powerAlphaRhythm: " << powerAlphaRhythm
+                 << "\npowerBetaRhythm: " << powerBetaRhythm
+                 << "\nalphaRhythms_percent: " << alphaRhythms_percent
+                 << "\nbetaRhythms_percent: " << betaRhythms_percent
+                 << "\nratio: " << ratio;
+    }
 };
 
 class EEG

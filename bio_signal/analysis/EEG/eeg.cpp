@@ -118,6 +118,7 @@ resultEEG EEG::calculate(){
     if (betaPower > 1e-12)
         result.ratio = alphaPower / betaPower;
 
+    result.print();
     return result;
 }
 

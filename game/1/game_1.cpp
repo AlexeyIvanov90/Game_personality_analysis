@@ -20,7 +20,7 @@
 
 namespace {
 constexpr int kSampleRateHz = 250;
-constexpr int kLogWindowSec = 5;
+constexpr int kLogWindowSec = 120;
 constexpr int kLogWindowSamples = kSampleRateHz * kLogWindowSec;
 }
 
@@ -28,6 +28,29 @@ Game1::Game1(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::Game1)
 {
+    // === ЖЕСТКОЕ ПРИНУДИТЕЛЬНОЕ РЕШЕНИЕ ===
+    // Устанавливаем программный рендеринг ДО создания виджетов
+    qputenv("QT_OPENGL", "software");
+    qputenv("QT_QUICK_BACKEND", "software");
+
+    // Отключаем проверку OpenGL
+    QCoreApplication::setAttribute(Qt::AA_UseSoftwareOpenGL);
+    QCoreApplication::setAttribute(Qt::AA_ShareOpenGLContexts, false);
+
+    // Настройка формата для программного рендеринга
+    QSurfaceFormat format;
+    format.setRenderableType(QSurfaceFormat::OpenGL);
+    format.setVersion(2, 0);
+    format.setProfile(QSurfaceFormat::CompatibilityProfile);
+    format.setOption(QSurfaceFormat::DeprecatedFunctions);
+    QSurfaceFormat::setDefaultFormat(format);
+
+    // Дополнительно: отключаем проверку контекста
+    qputenv("QT_OPENGL_NO_SANITY_CHECK", "1");
+    qputenv("QT_OPENGL_BUGLIST", "1");
+    // =====================================
+
+
     ui->setupUi(this);
 
     ui->quickWidgetGame->setSource(QUrl("qrc:/game/1/game_1.qml"));
@@ -238,17 +261,23 @@ void Game1::writeGameLog(){
     if (!gameLogStream)
         return;
 
-    //canalECGOpenBCI canalEEGOpenBCI это данные с OpenBCI
-    QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
-    QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
+    constexpr int kEegLogChannel = 2;
+    const bool openBciReady = OpenBCIManager::instance().hasAtLeastSamples(kLogWindowSamples, kEegLogChannel);
 
-    HeartRateVariability heartRateVariabilityAnalaiser;
-    heartRateVariabilityAnalaiser.setDataFromSensor(canalECGOpenBCI);
-    EEG eegAnalaiser;
-    eegAnalaiser.setDataFromSensor(canalEEGOpenBCI);
+    resultHeartRateVariability heartRateVariability;
+    resultEEG eegResult;
+    if (openBciReady) {
+        QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
+        QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples, kEegLogChannel);
 
-    resultHeartRateVariability heartRateVariability = heartRateVariabilityAnalaiser.calculate();
-    resultEEG EEG = eegAnalaiser.calculate();
+        HeartRateVariability heartRateVariabilityAnalaiser;
+        heartRateVariabilityAnalaiser.setDataFromSensor(canalECGOpenBCI);
+        EEG eegAnalaiser;
+        eegAnalaiser.setDataFromSensor(canalEEGOpenBCI);
+
+        heartRateVariability = heartRateVariabilityAnalaiser.calculate();
+        eegResult = eegAnalaiser.calculate();
+    }
 
     speed = allHitCount/(60.*(gameTimerCounter+1));
 
@@ -262,11 +291,11 @@ void Game1::writeGameLog(){
                    << QString::number(heartRateVariability.ULF) << ","
                    << QString::number(heartRateVariability.SI) << ","
 
-                   << QString::number(EEG.powerAlphaRhythm) << ","
-                   << QString::number(EEG.powerBetaRhythm) << ","
-                   << QString::number(EEG.alphaRhythms_percent) << ","
-                   << QString::number(EEG.betaRhythms_percent) << ","
-                   << QString::number(EEG.ratio) << ","
+                   << QString::number(eegResult.powerAlphaRhythm) << ","
+                   << QString::number(eegResult.powerBetaRhythm) << ","
+                   << QString::number(eegResult.alphaRhythms_percent) << ","
+                   << QString::number(eegResult.betaRhythms_percent) << ","
+                   << QString::number(eegResult.ratio) << ","
 
                    << QString::number(allHitCount) << ","
                    << QString::number(speed) << ","

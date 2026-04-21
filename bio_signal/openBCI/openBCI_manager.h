@@ -39,6 +39,9 @@ public:
     // channel < 0: использовать канал ЭЭГ1 из настроек (openBCISetting::EEG1)
     QVector<double> getLatestEegWindow(int sampleCount, int channel = -1) const;
 
+    // Правило выбора канала ЭЭГ такое же, как у getLatestEegWindow.
+    bool hasAtLeastSamples(int sampleCount, int eegChannel = -1) const;
+
     // Feed samples from transport layer (serial/LSL/UDP).
     void pushEcgSample(double v);
     void pushEegSample(int channel, double v);
