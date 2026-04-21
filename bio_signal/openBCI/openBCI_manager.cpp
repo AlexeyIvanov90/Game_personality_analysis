@@ -144,6 +144,11 @@ QVector<double> OpenBCIManager::getLatestEegWindow(int sampleCount, int channel)
     return tailWindow(eegByChannel_[ch], sampleCount);
 }
 
+QVector<double> OpenBCIManager::getLatestChannelSamples(int channel, int sampleCount) const
+{
+    return getLatestEegWindow(sampleCount, channel);
+}
+
 bool OpenBCIManager::hasAtLeastSamples(int sampleCount, int eegChannel) const
 {
     if (sampleCount <= 0)

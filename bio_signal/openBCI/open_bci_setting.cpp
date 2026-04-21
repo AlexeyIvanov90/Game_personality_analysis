@@ -1,8 +1,12 @@
 #include "open_bci_setting.h"
 #include "ui_open_bci_setting.h"
 
+#include "qcustomplot.h"
+
 #include <QSerialPortInfo>
 #include <QSettings>
+#include <QTimer>
+#include <QtGlobal>
 
 namespace {
 constexpr char kSettingsGroup[] = "OpenBCI";
@@ -73,10 +77,17 @@ DialogOpenBciSetting::DialogOpenBciSetting(openBCISetting setting, QWidget *pare
     int indexEEG2 = ui->comboBoxEEG2->findText(QString::number(setting.EEG2));
     if (indexEEG2 != -1)
         ui->comboBoxEEG2->setCurrentIndex(indexEEG2);
+
+    setupTestPlot();
+    testPlotTimer_ = new QTimer(this);
+    testPlotTimer_->setInterval(40);
+    connect(testPlotTimer_, &QTimer::timeout, this, &DialogOpenBciSetting::onTestPlotTimer);
 }
 
 DialogOpenBciSetting::~DialogOpenBciSetting()
 {
+    if (testMode_ != TestMode::None)
+        stopTestAndRestoreBci();
     delete ui;
 }
 
@@ -89,4 +100,137 @@ openBCISetting DialogOpenBciSetting::getOpenBCISetting(){
     setting.EEG2 = ui->comboBoxEEG2->currentText().toInt();
 
     return setting;
+}
+
+void DialogOpenBciSetting::setupTestPlot()
+{
+    ui->widgetTest->addGraph();
+    ui->widgetTest->xAxis->setLabel(QStringLiteral("mSec"));
+    ui->widgetTest->yAxis->setLabel(QStringLiteral("mV"));
+    ui->widgetTest->setInteractions(QCP::iRangeDrag | QCP::iRangeZoom);
+}
+
+int DialogOpenBciSetting::channelForTestMode(TestMode mode) const
+{
+    switch (mode) {
+    case TestMode::Ecg:
+        return ui->comboBoxECG->currentText().toInt();
+    case TestMode::Eeg1:
+        return ui->comboBoxEEG1->currentText().toInt();
+    case TestMode::Eeg2:
+        return ui->comboBoxEEG2->currentText().toInt();
+    default:
+        return 0;
+    }
+}
+
+void DialogOpenBciSetting::applyTestUiState(TestMode active)
+{
+    const bool idle = (active == TestMode::None);
+    ui->comboBoxComPort->setEnabled(idle);
+    ui->comboBoxECG->setEnabled(idle);
+    ui->comboBoxEEG1->setEnabled(idle);
+    ui->comboBoxEEG2->setEnabled(idle);
+    ui->pushButtonSave->setEnabled(idle);
+    ui->pushButtonClose->setEnabled(idle);
+
+    const QString testStr = QStringLiteral("Тест");
+    const QString cancelStr = QStringLiteral("Отмена");
+
+    ui->pushButtonTestECG->setText(active == TestMode::Ecg ? cancelStr : testStr);
+    ui->pushButtonEEG1->setText(active == TestMode::Eeg1 ? cancelStr : testStr);
+    ui->pushButtonTestEEG2->setText(active == TestMode::Eeg2 ? cancelStr : testStr);
+
+    ui->pushButtonTestECG->setEnabled(idle || active == TestMode::Ecg);
+    ui->pushButtonEEG1->setEnabled(idle || active == TestMode::Eeg1);
+    ui->pushButtonTestEEG2->setEnabled(idle || active == TestMode::Eeg2);
+}
+
+void DialogOpenBciSetting::stopTestAndRestoreBci()
+{
+    if (testPlotTimer_)
+        testPlotTimer_->stop();
+    if (testMode_ == TestMode::None)
+        return;
+
+    testMode_ = TestMode::None;
+
+    if (bciWasRunningBeforeTest_) {
+        OpenBCIManager::instance().setSetting(bciSettingBackup_);
+        OpenBCIManager::instance().start();
+    } else {
+        OpenBCIManager::instance().stop();
+    }
+
+    applyTestUiState(TestMode::None);
+    if (ui->widgetTest->graphCount() > 0) {
+        ui->widgetTest->graph(0)->setData(QVector<double>(), QVector<double>());
+        ui->widgetTest->replot();
+    }
+}
+
+void DialogOpenBciSetting::updateTestGraph()
+{
+    if (testMode_ == TestMode::None)
+        return;
+    const int ch = qBound(0, channelForTestMode(testMode_), 7);
+    constexpr int kWindow = 750;
+    const QVector<double> y = OpenBCIManager::instance().getLatestChannelSamples(ch, kWindow);
+    if (y.isEmpty()) {
+        return;
+    }
+    QVector<double> x(y.size());
+    for (int i = 0; i < y.size(); ++i)
+        x[i] = static_cast<double>(i);
+    ui->widgetTest->graph(0)->setData(x, y);
+    ui->widgetTest->rescaleAxes();
+    ui->widgetTest->replot();
+}
+
+void DialogOpenBciSetting::onTestPlotTimer()
+{
+    updateTestGraph();
+}
+
+void DialogOpenBciSetting::toggleTest(TestMode mode)
+{
+    if (testMode_ != TestMode::None) {
+        if (testMode_ == mode)
+            stopTestAndRestoreBci();
+        return;
+    }
+
+    bciSettingBackup_ = OpenBCIManager::instance().getSetting();
+    bciWasRunningBeforeTest_ = OpenBCIManager::instance().isRunning();
+
+    OpenBCIManager::instance().setSetting(getOpenBCISetting());
+    OpenBCIManager::instance().start();
+    if (!OpenBCIManager::instance().isRunning()) {
+        if (bciWasRunningBeforeTest_) {
+            OpenBCIManager::instance().setSetting(bciSettingBackup_);
+            OpenBCIManager::instance().start();
+        }
+        ui->labelInfo->setText(QStringLiteral("Failed to open COM port"));
+        return;
+    }
+
+    testMode_ = mode;
+    ui->labelInfo->clear();
+    applyTestUiState(mode);
+    testPlotTimer_->start();
+}
+
+void DialogOpenBciSetting::on_pushButtonTestECG_clicked()
+{
+    toggleTest(TestMode::Ecg);
+}
+
+void DialogOpenBciSetting::on_pushButtonEEG1_clicked()
+{
+    toggleTest(TestMode::Eeg1);
+}
+
+void DialogOpenBciSetting::on_pushButtonTestEEG2_clicked()
+{
+    toggleTest(TestMode::Eeg2);
 }

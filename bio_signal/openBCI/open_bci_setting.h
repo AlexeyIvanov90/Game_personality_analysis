@@ -8,6 +8,8 @@ namespace Ui {
 class DialogOpenBciSetting;
 }
 
+class QTimer;
+
 class DialogOpenBciSetting : public QDialog
 {
     Q_OBJECT
@@ -17,8 +19,31 @@ public:
     ~DialogOpenBciSetting();
     openBCISetting getOpenBCISetting();
 
+private slots:
+    void on_pushButtonTestECG_clicked();
+
+    void on_pushButtonEEG1_clicked();
+
+    void on_pushButtonTestEEG2_clicked();
+
+    void onTestPlotTimer();
+
 private:
+    enum class TestMode { None, Ecg, Eeg1, Eeg2 };
+
+    void setupTestPlot();
+    void toggleTest(TestMode mode);
+    void stopTestAndRestoreBci();
+    void applyTestUiState(TestMode activeOrNone);
+    int channelForTestMode(TestMode mode) const;
+    void updateTestGraph();
+
     Ui::DialogOpenBciSetting *ui;
+
+    QTimer *testPlotTimer_ = nullptr;
+    TestMode testMode_ = TestMode::None;
+    bool bciWasRunningBeforeTest_ = false;
+    openBCISetting bciSettingBackup_{};
 };
 
 bool loadOpenBciSettings(openBCISetting& out);

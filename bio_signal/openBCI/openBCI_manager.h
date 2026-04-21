@@ -39,6 +39,9 @@ public:
     // channel < 0: использовать канал ЭЭГ1 из настроек (openBCISetting::EEG1)
     QVector<double> getLatestEegWindow(int sampleCount, int channel = -1) const;
 
+    /** Последние sampleCount отсчётов с канала 0..7 (поток Cyton ЭЭГ). Для окна «тест» в настройках. */
+    QVector<double> getLatestChannelSamples(int channel, int sampleCount) const;
+
     // Правило выбора канала ЭЭГ такое же, как у getLatestEegWindow.
     bool hasAtLeastSamples(int sampleCount, int eegChannel = -1) const;
 

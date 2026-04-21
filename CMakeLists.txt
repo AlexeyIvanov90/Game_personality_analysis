@@ -15,7 +15,7 @@ if(WIN32)
 endif()
 
 find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets LinguistTools)
-find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets LinguistTools Quick QuickWidgets SerialPort)
+find_package(Qt${QT_VERSION_MAJOR} REQUIRED COMPONENTS Widgets PrintSupport LinguistTools Quick QuickWidgets SerialPort)
 
 set(TS_FILES Game_personality_analysis_ru_RU.ts)
 
@@ -62,7 +62,7 @@ else()
             bio_signal/openBCI/openBCI_manager.h
             bio_signal/openBCI/openBCI_manager.cpp
             bio_signal/openBCI/open_bci_setting.h bio_signal/openBCI/open_bci_setting.cpp bio_signal/openBCI/open_bci_setting.ui
-
+            qcustomplot.cpp qcustomplot.h
         )
     endif()
 
@@ -81,6 +81,7 @@ add_custom_command(
 target_include_directories(Game_personality_analysis PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Game_personality_analysis PRIVATE
     Qt${QT_VERSION_MAJOR}::Widgets
+    Qt${QT_VERSION_MAJOR}::PrintSupport
     Qt${QT_VERSION_MAJOR}::Quick
     Qt${QT_VERSION_MAJOR}::QuickWidgets
     Qt${QT_VERSION_MAJOR}::SerialPort)
