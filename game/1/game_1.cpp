@@ -171,14 +171,20 @@ void Game1::autoLevelCalculation(Game1Event event){
     }
 }
 
+#include "../player_dialog.h"
+
 void Game1::startNewGame(){
     if(gameRun)
         return;
+    PlayerDialog pd;
+    pd.setStyleSheet(AppSetting::styleSheet);
 
-    sendMessage("Старт игры", 1000);
-    OpenBCIManager::instance().start();
-    initGame();
-    startNewLvl();
+    if(pd.exec() == QDialog::Accepted){
+        sendMessage("Старт игры", 1000);
+        OpenBCIManager::instance().start();
+        initGame();
+        startNewLvl();
+    }
 }
 
 void Game1::stopGame(){
@@ -205,7 +211,7 @@ void Game1::stopGame(){
 }
 
 void Game1::startWriteGameLog(){
-    if(logWrite)
+    if(logWrite||!gameRun)
         return;
     logWrite=true;
 
