@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QTextStream>
 
+#include "../player_dialog.h"
+
 namespace Ui {
 class Game1;
 }
@@ -84,6 +86,8 @@ private:
 
     QFile* gameLogfile=nullptr;
     QTextStream* gameLogStream=nullptr;
+
+    playerParam player;
 
     QString gameInfo = "Цель игры: оценка визуальной памяти(ПВК-тест)\n"
                        "Инструкция: на экране появляется серия разноцветных мишеней разной формы и размера."

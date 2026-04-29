@@ -177,9 +177,13 @@ void Game1::startNewGame(){
     if(gameRun)
         return;
     PlayerDialog pd;
-    pd.setStyleSheet(AppSetting::styleSheet);
 
     if(pd.exec() == QDialog::Accepted){
+        player = Player::getInstance().getPlayer();
+
+        qDebug() << "player.name: " << player.name;
+        qDebug() << "player.type: " << player.type;
+
         sendMessage("Старт игры", 1000);
         OpenBCIManager::instance().start();
         initGame();

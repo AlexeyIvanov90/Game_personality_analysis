@@ -1,8 +1,7 @@
 #include "player_dialog.h"
 #include "ui_player_dialog.h"
+#include "../app_setting.h"
 
-QString Player::name="";
-QString Player::type="";
 
 PlayerDialog::PlayerDialog(QWidget *parent)
     : QDialog(parent)
@@ -18,6 +17,7 @@ PlayerDialog::PlayerDialog(QWidget *parent)
     ui->comboBoxPlayerType->addItem(playerTypeToString(PlayerType::Phlegmatic));
     ui->comboBoxPlayerType->addItem(playerTypeToString(PlayerType::Sanguine));
 
+    playerParam player = Player::getInstance().getPlayer();
 
     ui->lineEditPlayerName->setText(player.name);
 
@@ -26,6 +26,9 @@ PlayerDialog::PlayerDialog(QWidget *parent)
         ui->comboBoxPlayerType->setCurrentIndex(index);
     else
         ui->comboBoxPlayerType->setCurrentIndex(0);
+
+    setStyleSheet(AppSetting::styleSheet);
+    setWindowFlags(Qt::FramelessWindowHint);
 }
 
 PlayerDialog::~PlayerDialog()
@@ -33,8 +36,10 @@ PlayerDialog::~PlayerDialog()
     delete ui;
 }
 
-Player PlayerDialog::getPlayerInfo(){
+void PlayerDialog::on_pushButtonSave_clicked()
+{
+    playerParam player;
     player.name = ui->lineEditPlayerName->text();
     player.type = ui->comboBoxPlayerType->currentText();
-    return player;
+    Player::getInstance().setPlayer(player);
 }

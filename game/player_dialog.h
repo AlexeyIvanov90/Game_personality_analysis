@@ -21,9 +21,31 @@ inline QString playerTypeToString(PlayerType key) {
     }
 }
 
-struct Player{
-    static QString name;
-    static QString type;
+struct playerParam{
+    QString name;
+    QString type;
+};
+
+class Player {
+private:
+    Player() = default;
+
+    Player(const Player&) = delete;
+    Player& operator=(const Player&) = delete;
+    playerParam pP;
+public:
+    static Player& getInstance() {
+        static Player instance;
+        return instance;
+    }
+
+    void setPlayer(playerParam in) {
+        pP = in;
+    }
+
+    const playerParam getPlayer() {
+        return pP;
+    }
 };
 
 namespace Ui {
@@ -37,10 +59,11 @@ class PlayerDialog : public QDialog
 public:
     explicit PlayerDialog(QWidget *parent = nullptr);
     ~PlayerDialog();
-    Player getPlayerInfo();
+private slots:
+    void on_pushButtonSave_clicked();
+
 private:
     Ui::PlayerDialog *ui;
-    Player player;
 };
 
 #endif // PLAYER_DIALOG_H

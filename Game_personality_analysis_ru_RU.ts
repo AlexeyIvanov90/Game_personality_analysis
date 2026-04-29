@@ -36,7 +36,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <source>Тест</source>
+        <source>Test</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
