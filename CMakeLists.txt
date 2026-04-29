@@ -63,6 +63,7 @@ else()
             bio_signal/openBCI/openBCI_manager.cpp
             bio_signal/openBCI/open_bci_setting.h bio_signal/openBCI/open_bci_setting.cpp bio_signal/openBCI/open_bci_setting.ui
             qcustomplot.cpp qcustomplot.h
+            game/player_dialog.h game/player_dialog.cpp game/player_dialog.ui
         )
     endif()
 

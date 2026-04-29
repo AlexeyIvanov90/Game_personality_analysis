@@ -135,4 +135,27 @@
         <translation type="unfinished"></translation>
     </message>
 </context>
+<context>
+    <name>PlayerDialog</name>
+    <message>
+        <source>Dialog</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Имя игрока</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Сохранить</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Закрыть</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Тип ВНД</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
 </TS>
