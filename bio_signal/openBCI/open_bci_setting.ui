@@ -176,7 +176,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Тест</string>
+    <string>Test</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonEEG1">
@@ -189,7 +189,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Тест</string>
+    <string>Test</string>
    </property>
   </widget>
   <widget class="QPushButton" name="pushButtonTestEEG2">
@@ -202,7 +202,7 @@
     </rect>
    </property>
    <property name="text">
-    <string>Тест</string>
+    <string>Test</string>
    </property>
   </widget>
   <widget class="QCustomPlot" name="widgetTest" native="true">

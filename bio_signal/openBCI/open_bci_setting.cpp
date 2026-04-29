@@ -134,8 +134,8 @@ void DialogOpenBciSetting::applyTestUiState(TestMode active)
     ui->pushButtonSave->setEnabled(idle);
     ui->pushButtonClose->setEnabled(idle);
 
-    const QString testStr = QStringLiteral("Тест");
-    const QString cancelStr = QStringLiteral("Отмена");
+    const QString testStr = QStringLiteral("Test");
+    const QString cancelStr = QStringLiteral("Cancel");
 
     ui->pushButtonTestECG->setText(active == TestMode::Ecg ? cancelStr : testStr);
     ui->pushButtonEEG1->setText(active == TestMode::Eeg1 ? cancelStr : testStr);
