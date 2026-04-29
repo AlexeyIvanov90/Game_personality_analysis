@@ -7,6 +7,7 @@
 #include <QTextStream>
 
 #include "../../bio_signal/analysis/EEG/eeg.h"
+#include "../player_dialog.h"
 
 namespace Ui {
 class Game3;
@@ -96,6 +97,8 @@ private:
     QFile* gameLogfile=nullptr;
     QTextStream* gameLogStream=nullptr;
     QVector<resultEEG> previousEEG;
+
+    playerParam player;
 
     QString gameInfo = "Цель игры: определение \"человеческого фактора\", связь его с биоритмами\n"
                        "Инструкция: управляйте шариком, избегая препятствия и собирая цели по траектории";

@@ -219,8 +219,12 @@ void Game1::startWriteGameLog(){
         return;
     logWrite=true;
 
-    QDir().mkpath(DIR_GAME_LOG);
-    gameLogfile = new QFile(DIR_GAME_LOG "game1_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+
+    QString dirLog = DIR_GAME_LOG + player.name + "_" + player.type + "/";
+    QDir().mkpath(dirLog);
+    gameLogfile = new QFile(dirLog
+                            + "game1_"
+                            + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         qDebug() << "Файл не создан";

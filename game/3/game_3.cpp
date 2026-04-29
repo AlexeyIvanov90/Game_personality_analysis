@@ -176,12 +176,20 @@ void Game3::startNewGame(){
     if(gameRun)
         return;
 
-    sendMessage("Старт игры", 1000);
-    OpenBCIManager::instance().start();
-    initGame();
-    startNewLvl();
-    startWriteGameLog();
+    PlayerDialog pd;
 
+    if(pd.exec() == QDialog::Accepted){
+        player = Player::getInstance().getPlayer();
+
+        qDebug() << "player.name: " << player.name;
+        qDebug() << "player.type: " << player.type;
+
+        sendMessage("Старт игры", 1000);
+        OpenBCIManager::instance().start();
+        initGame();
+        startNewLvl();
+        startWriteGameLog();
+    }
 }
 
 void Game3::startNewLvl(){
@@ -319,8 +327,11 @@ void Game3::startWriteGameLog(){
         return;
     logWrite=true;
 
-    QDir().mkpath(DIR_GAME_LOG);
-    gameLogfile = new QFile(DIR_GAME_LOG "game3_" + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
+    QString dirLog = DIR_GAME_LOG + player.name + "_" + player.type + "/";
+    QDir().mkpath(dirLog);
+    gameLogfile = new QFile(dirLog
+                            + "game3_"
+                            + QDateTime::currentDateTime().toString("dd.MM.yy hh.mm.ss")+".csv");
 
     if (!gameLogfile->open(QIODevice::WriteOnly | QIODevice::Text | QIODevice::Append)) {
         qDebug() << "Файл не создан";

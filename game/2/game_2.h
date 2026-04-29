@@ -6,6 +6,8 @@
 #include <QFile>
 #include <QTextStream>
 
+#include "../player_dialog.h"
+
 namespace Ui {
 class Game2;
 }
@@ -81,6 +83,8 @@ private:
     QTimer logTimer;
     QFile* gameLogfile=nullptr;
     QTextStream* gameLogStream=nullptr;
+
+    playerParam player;
 
     QString gameInfo = "Цель игры: моделирование различных функциональных состояний, "
                        "определение уровня работоспобности в смоделированных функциональных состояниях\n"
