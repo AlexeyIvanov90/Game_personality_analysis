@@ -2,6 +2,7 @@
 #define OPEN_BCI_SETTING_H
 
 #include <QDialog>
+#include <QElapsedTimer>
 #include "openBCI_manager.h"
 
 namespace Ui {
@@ -20,6 +21,8 @@ public:
     openBCISetting getOpenBCISetting();
 
 private slots:
+    void on_pushButtonSave_clicked();
+
     void on_pushButtonTestECG_clicked();
 
     void on_pushButtonEEG1_clicked();
@@ -41,6 +44,7 @@ private:
     Ui::DialogOpenBciSetting *ui;
 
     QTimer *testPlotTimer_ = nullptr;
+    QElapsedTimer testElapsed_{};
     TestMode testMode_ = TestMode::None;
     bool bciWasRunningBeforeTest_ = false;
     openBCISetting bciSettingBackup_{};

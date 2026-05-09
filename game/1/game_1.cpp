@@ -13,7 +13,7 @@
 #include "../../bio_signal/analysis/EEG/eeg.h"
 #include "../../bio_signal/openBCI/openBCI_manager.h"
 
-#define MAX_GAME_MINUTES  10
+#define MAX_GAME_MINUTES  15
 #define MIN_ACCURACY_PERCENT_PER_MINUTE 50
 #define START_LVL 3
 #define LEVEL_CORRECTION  0.8
@@ -275,14 +275,14 @@ void Game1::writeGameLog(){
     if (!gameLogStream)
         return;
 
-    constexpr int kEegLogChannel = 2;
-    const bool openBciReady = OpenBCIManager::instance().hasAtLeastSamples(kLogWindowSamples, kEegLogChannel);
+    // Используем каналы из настроек OpenBCI (EEG1/ECG), без хардкода.
+    const bool openBciReady = OpenBCIManager::instance().hasAtLeastSamples(kLogWindowSamples);
 
     resultHeartRateVariability heartRateVariability;
     resultEEG eegResult;
     if (openBciReady) {
         QVector<double> canalECGOpenBCI = OpenBCIManager::instance().getLatestEcgWindow(kLogWindowSamples);
-        QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples, kEegLogChannel);
+        QVector<double> canalEEGOpenBCI = OpenBCIManager::instance().getLatestEegWindow(kLogWindowSamples);
 
         HeartRateVariability heartRateVariabilityAnalaiser;
         heartRateVariabilityAnalaiser.setDataFromSensor(canalECGOpenBCI);

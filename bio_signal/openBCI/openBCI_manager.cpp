@@ -64,13 +64,18 @@ QString OpenBCIManager::portName() const
 
 void OpenBCIManager::start()
 {
-    QMutexLocker lock(&mutex_);
-    if (running_)
-        return;
-    running_ = true;
-    rxBuffer_.clear();
+    QString portToOpen;
+    {
+        QMutexLocker lock(&mutex_);
+        if (running_)
+            return;
+        running_ = true;
+        rxBuffer_.clear();
+        portToOpen = portName_;
+    }
+
     emit runningChanged(true);
-    emit statusMessage(QString("OpenBCI: start (port %1)").arg(portName_));
+    emit statusMessage(QString("OpenBCI: start (port %1)").arg(portToOpen));
 
     if (!serial_) {
         serial_ = new QSerialPort(this);
@@ -80,7 +85,7 @@ void OpenBCIManager::start()
     if (serial_->isOpen())
         serial_->close();
 
-    serial_->setPortName(portName_);
+    serial_->setPortName(portToOpen);
     serial_->setBaudRate(115200);
     serial_->setDataBits(QSerialPort::Data8);
     serial_->setParity(QSerialPort::NoParity);
@@ -88,17 +93,23 @@ void OpenBCIManager::start()
     serial_->setFlowControl(QSerialPort::NoFlowControl);
 
     if (!serial_->open(QIODevice::ReadWrite)) {
-        emit statusMessage(QString("OpenBCI: failed to open %1: %2").arg(portName_, serial_->errorString()));
-        running_ = false;
+        emit statusMessage(QString("OpenBCI: failed to open %1: %2").arg(portToOpen, serial_->errorString()));
+        {
+            QMutexLocker lock(&mutex_);
+            running_ = false;
+        }
         emit runningChanged(false);
         return;
     }
 
-    ecg_.clear();
-    for (auto& ch : eegByChannel_)
-        ch.clear();
-    if (eegByChannel_.size() < 8)
-        eegByChannel_.resize(8);
+    {
+        QMutexLocker lock(&mutex_);
+        ecg_.clear();
+        for (auto& ch : eegByChannel_)
+            ch.clear();
+        if (eegByChannel_.size() < 8)
+            eegByChannel_.resize(8);
+    }
 
     // Start streaming (Cyton): 'b' is commonly used to start binary stream; 's' to stop.
     serial_->write("b");
@@ -107,11 +118,14 @@ void OpenBCIManager::start()
 
 void OpenBCIManager::stop()
 {
-    QMutexLocker lock(&mutex_);
-    if (!running_)
-        return;
-    running_ = false;
-    rxBuffer_.clear();
+    {
+        QMutexLocker lock(&mutex_);
+        if (!running_)
+            return;
+        running_ = false;
+        rxBuffer_.clear();
+    }
+
     if (serial_ && serial_->isOpen()) {
         serial_->write("s");
         serial_->flush();
@@ -130,7 +144,12 @@ bool OpenBCIManager::isRunning() const
 QVector<double> OpenBCIManager::getLatestEcgWindow(int sampleCount) const
 {
     QMutexLocker lock(&mutex_);
-    return tailWindow(ecg_, sampleCount);
+    // ЭКГ берём из канала, выбранного в настройках (setting_.ECG).
+    // Так окно всегда соответствует актуальным настройкам и не зависит от отдельного буфера ecg_.
+    const int ecgCh = qBound(0, static_cast<int>(setting_.ECG), 7);
+    if (ecgCh >= eegByChannel_.size())
+        return {};
+    return tailWindow(eegByChannel_[ecgCh], sampleCount);
 }
 
 QVector<double> OpenBCIManager::getLatestEegWindow(int sampleCount, int channel) const
@@ -154,7 +173,8 @@ bool OpenBCIManager::hasAtLeastSamples(int sampleCount, int eegChannel) const
     if (sampleCount <= 0)
         return true;
     QMutexLocker lock(&mutex_);
-    if (ecg_.size() < sampleCount)
+    const int ecgCh = qBound(0, static_cast<int>(setting_.ECG), 7);
+    if (ecgCh >= eegByChannel_.size() || eegByChannel_[ecgCh].size() < sampleCount)
         return false;
     int ch = eegChannel;
     if (ch < 0)
@@ -257,9 +277,6 @@ void OpenBCIManager::parseCytonPackets()
             eegByChannel_[ch].push_back(double(raw));
         }
 
-        const int ecgCh = qBound(0, static_cast<int>(setting_.ECG), 7);
-        ecg_.push_back(eegByChannel_[ecgCh].isEmpty() ? 0.0 : eegByChannel_[ecgCh].back());
-
         trimBuffersIfNeeded();
 
         rxBuffer_.remove(0, kCytonPacketSize);
@@ -269,6 +286,7 @@ void OpenBCIManager::parseCytonPackets()
 void OpenBCIManager::trimBuffersIfNeeded()
 {
     // Keep memory bounded.
+    // ecg_ может заполняться через pushEcgSample() из другого транспорта.
     if (ecg_.size() > kMaxSamplesToKeep)
         ecg_.remove(0, ecg_.size() - kMaxSamplesToKeep);
 

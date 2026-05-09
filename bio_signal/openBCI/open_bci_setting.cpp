@@ -5,11 +5,14 @@
 
 #include <QSerialPortInfo>
 #include <QSettings>
+#include <QElapsedTimer>
 #include <QTimer>
 #include <QtGlobal>
 
 namespace {
 constexpr char kSettingsGroup[] = "OpenBCI";
+constexpr int kTestDurationMs = 60 * 1000;
+constexpr int kSampleRateHz = 250; // Cyton default (см. OpenBCIManager)
 }
 
 bool loadOpenBciSettings(openBCISetting& out)
@@ -46,7 +49,6 @@ DialogOpenBciSetting::DialogOpenBciSetting(openBCISetting setting, QWidget *pare
     ui->setupUi(this);
     this->setWindowFlags(Qt::FramelessWindowHint);
 
-    connect(ui->pushButtonSave, &QPushButton::clicked, this, &QDialog::accept);
     connect(ui->pushButtonClose, &QPushButton::clicked, this, &QDialog::reject);
 
     ui->comboBoxComPort->clear();
@@ -82,6 +84,7 @@ DialogOpenBciSetting::DialogOpenBciSetting(openBCISetting setting, QWidget *pare
     testPlotTimer_ = new QTimer(this);
     testPlotTimer_->setInterval(40);
     connect(testPlotTimer_, &QTimer::timeout, this, &DialogOpenBciSetting::onTestPlotTimer);
+
 }
 
 DialogOpenBciSetting::~DialogOpenBciSetting()
@@ -100,6 +103,21 @@ openBCISetting DialogOpenBciSetting::getOpenBCISetting(){
     setting.EEG2 = ui->comboBoxEEG2->currentText().toInt();
 
     return setting;
+}
+
+void DialogOpenBciSetting::on_pushButtonSave_clicked()
+{
+    // Если вдруг тест запущен (в норме Save в это время disabled) — корректно останавливаем.
+    if (testMode_ != TestMode::None)
+        stopTestAndRestoreBci();
+
+    const openBCISetting s = getOpenBCISetting();
+    saveOpenBciSettings(s);
+
+    // Применяем настройки сразу, чтобы дальнейшие обращения брали правильные каналы/порт.
+    OpenBCIManager::instance().setSetting(s);
+
+    accept();
 }
 
 void DialogOpenBciSetting::setupTestPlot()
@@ -163,6 +181,7 @@ void DialogOpenBciSetting::stopTestAndRestoreBci()
     }
 
     applyTestUiState(TestMode::None);
+    ui->labelInfo->clear();
     if (ui->widgetTest->graphCount() > 0) {
         ui->widgetTest->graph(0)->setData(QVector<double>(), QVector<double>());
         ui->widgetTest->replot();
@@ -174,21 +193,32 @@ void DialogOpenBciSetting::updateTestGraph()
     if (testMode_ == TestMode::None)
         return;
     const int ch = qBound(0, channelForTestMode(testMode_), 7);
-    constexpr int kWindow = 750;
-    const QVector<double> y = OpenBCIManager::instance().getLatestChannelSamples(ch, kWindow);
+    const int windowSamples = (kTestDurationMs * kSampleRateHz) / 1000;
+    const QVector<double> y = OpenBCIManager::instance().getLatestChannelSamples(ch, windowSamples);
     if (y.isEmpty()) {
         return;
     }
     QVector<double> x(y.size());
+    const double stepMs = 1000.0 / double(kSampleRateHz);
     for (int i = 0; i < y.size(); ++i)
-        x[i] = static_cast<double>(i);
+        x[i] = stepMs * double(i);
     ui->widgetTest->graph(0)->setData(x, y);
-    ui->widgetTest->rescaleAxes();
+    ui->widgetTest->xAxis->setRange(0.0, double(kTestDurationMs));
+    ui->widgetTest->yAxis->rescale(true);
     ui->widgetTest->replot();
 }
 
 void DialogOpenBciSetting::onTestPlotTimer()
 {
+    if (testMode_ == TestMode::None)
+        return;
+    const qint64 elapsed = testElapsed_.elapsed();
+    const qint64 remainingMs = qMax<qint64>(0, qint64(kTestDurationMs) - elapsed);
+    ui->labelInfo->setText(QStringLiteral("Test: %1 s left").arg((remainingMs + 999) / 1000));
+    if (elapsed >= kTestDurationMs) {
+        stopTestAndRestoreBci();
+        return;
+    }
     updateTestGraph();
 }
 
@@ -217,6 +247,7 @@ void DialogOpenBciSetting::toggleTest(TestMode mode)
     testMode_ = mode;
     ui->labelInfo->clear();
     applyTestUiState(mode);
+    testElapsed_.restart();
     testPlotTimer_->start();
 }
 

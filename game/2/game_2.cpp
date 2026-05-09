@@ -12,7 +12,7 @@
 #include "../../bio_signal/analysis/EEG/eeg.h"
 #include "../../bio_signal/openBCI/openBCI_manager.h"
 
-#define MAX_GAME_MINUTES  10
+#define MAX_GAME_MINUTES  15
 
 #define MIN_LVL  5
 #define MAX_LVL  38
